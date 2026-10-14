@@ -638,22 +638,152 @@ a secure seed. A bad `OTEL_RESOURCE_ATTRIBUTES` still keeps
 
 - **P5.1** The stdout exporter, one JSON line per span; a pretty option. (The
   `SpanExporter` interface came with P2.6, in `sdk/trace`.)
+  *Done* (`exporters/stdout/stdout.v`, tests). `stdout.Exporter.new(pretty:,
+  resource:, writer:)`; default standard output. One JSON object per span, in
+  harness-trace-lab's JSONL style and a fixed key order: `name`, `trace_id`,
+  `span_id`, `parent_span_id` (roots have none), `trace_state` (if any),
+  `kind`, `start_time`/`end_time` (RFC 3339, UTC, nanoseconds), `duration_ms`
+  (3 decimals), `status` (`code`, `description` if any), `attributes` (an
+  object), `events`, `links`, `scope` (`name`, `version` if any), the dropped
+  counts when not 0, and `resource` with `resource: true` (off by default: it
+  repeats on every line). `pretty: true` indents the same object by two spaces.
+  Built as a small ordered tree (`Node`), so both modes share one writer.
+  NaN and infinities are strings (JSON has neither); control characters are
+  `\u00xx`; text that isn't UTF-8 has its high bytes as `\u00xx`, so every line
+  stays valid JSON (tests decode each). Writes under a lock, all bytes or an
+  error; after `shutdown`, exports fail. Tested with exact lines from the SDK
+  (sequential ids, fixed times); four mutations fail them.
 - **P5.2** OTLP JSON encoding: `resourceSpans` → `scopeSpans` → `spans`, ids as
   hex, times as strings of unix nanoseconds, `intValue` as a string, attributes as
   `{key, value: {stringValue | ...}}`, events, links, status, kind as its number.
   Tests against golden JSON from the OTLP spec's examples.
+  *Done* (`exporters/otlphttp/encode.v`, tests, `testdata/`; the ordered JSON
+  writer moved from `stdout` to `exporters/internal/jsonw`, kept out of the API
+  docs by `.vdocignore`). `encode_traces(spans, pretty) string`: an
+  `ExportTraceServiceRequest` grouped by resource, then scope, in first-seen
+  order; `schemaUrl` at both levels. Ids lowercase hex; times and `intValue` as
+  strings; `kind` as OTLP's number (internal 1 … consumer 5, mapped, since
+  otel's enum starts at 0); status `{message, code}` with otel's numbers; a
+  NaN `doubleValue` as `"NaN"`; arrays as `{"arrayValue":{"values":[…]}}`;
+  defaults (empty, zero, unset status) left out. `flags` on spans and links is
+  the trace flags plus `0x100` (remote known) and `0x200` (remote), as Go does.
+  - `testdata/otlp_example_trace.json` is the OTLP repository's
+    `examples/trace.json`; the encoder reproduces every field of it (hex
+    compared without case: the example is upper case, we write lower, both
+    valid). `testdata/traces_golden.json` covers every value type, events,
+    links, dropped counts, statuses and grouping; reviewed field by field
+    against the spec; regenerate with `UPDATE_GOLDEN=1`.
+  - Four mutations (kind from 0, `intValue` as a number, no remote bits, scope
+    grouping ignored) fail the tests.
 - **P5.3** OTLP/HTTP client: endpoint and header env vars, `/v1/traces` path rules
   (the generic endpoint gets the path added, the traces one doesn't), timeout,
   one retry on 429/502/503/504 honoring `Retry-After`.
+  *Done* (`exporters/otlphttp/otlphttp.v`, `otlphttp_test.v`).
+  `otlphttp.Exporter.new(endpoint:, headers:, timeout:) !` implements
+  `trace.SpanExporter`: one POST of `encode_traces` per batch,
+  `Content-Type: application/json`, `User-Agent: OTel-OTLP-Exporter-V/<version>`.
+  - URL: code's `endpoint` (the full traces URL), else
+    `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` as is, else
+    `OTEL_EXPORTER_OTLP_ENDPOINT` + `v1/traces` after its own path, else
+    `http://localhost:4318/v1/traces`. Headers: the general variable, then the
+    traces one key by key, then code's; `k=v` with percent-decoded values.
+    Timeout: code, else the traces then general variable (ms), else 10 s.
+  - Section 1's rule: a malformed endpoint (no http/https scheme or host) is an
+    error; a bad header entry, timeout, or a protocol other than `http/json` is
+    a warning and the default. Warnings name an entry, never its value (a
+    header may be an API key).
+  - Retry: 2xx is success; 429/502/503/504 get one more try after
+    `Retry-After` (seconds or an HTTP date) or 1 s, unless that passes the
+    timeout; any other status, a second failure, or a network error fails the
+    export with the status and up to 200 characters of the body. `net.http`'s
+    own socket retries are off (`max_retries: 1`, which is one attempt; 0 was
+    none at all, found in P5.6).
+  - The HTTP call is a private `Transport`; tests script a fake and record
+    waits, so none sleeps. P5.6 tests the real one against a local server.
+  - Compiling `net.http` (TLS, HTTP/2) takes about 20 s per test file with
+    `-nocache`; the price of the cache workaround (P2.4).
+  - Four mutations (retry on any 4xx/5xx, `Retry-After` ignored, the trailing
+    slash rule, code headers dropped) fail the tests.
+  - Not done: gzip (`OTEL_EXPORTER_OTLP_COMPRESSION`), TLS client options, and
+    reading a 2xx `partial_success` body; later if asked.
 - **P5.4** Batch processor, part 1: the channel, the queue limit and drop counter
   (readable as `dropped()`), the worker thread exporting by size.
+  *Done* (`sdk/trace/batch_processor.v`, `batch_processor_test.v`; in
+  `sdk/trace` beside the simple processor, as in Go).
+  `BatchSpanProcessor.new(exporter, max_queue_size: 2048, max_export_batch_size:
+  512, on_error:)`. `on_end` puts a sampled span on a buffered channel with
+  `try_push`: never waits; a full queue drops and counts (`dropped() u64`). One
+  worker thread fills a batch and exports it at the batch size; export errors
+  go to `on_error` (stderr by default). `shutdown` (once): closes the queue,
+  the worker exports what is left, waits for it, then the exporter's
+  `shutdown`; later spans are ignored, not counted. A batch size above the
+  queue size is cut to it. `force_flush` returns at once until P5.5.
+  - Tests: batches of 3,3 then 1 at shutdown in order; unsampled skipped; a
+    held exporter with a queue of 4 drops exactly 5 of 9 without waiting; late
+    spans ignored; errors to `on_error`; 8 threads × 500 spans through a
+    provider all exported in batches of 100 or fewer. 20 runs (10 under
+    `-prod`) without a failure.
+  - Three mutations (a blocking push, no drain at shutdown, batches one too
+    big) fail the tests. Two first hung the test rather than failing it; the
+    test now waits with `select` timeouts and ends spans from its own thread,
+    so a hang becomes a failure in seconds, not a 20-minute CI timeout.
 - **P5.5** Batch processor, part 2: export by time, `force_flush`, `shutdown`
   with a timeout; env vars `OTEL_BSP_*`.
+  *Done* (`sdk/trace/batch_processor.v` reworked, tests added).
+  - The worker waits in one `select` on the span queue, a control channel and
+    the schedule delay. A full batch goes out at once; otherwise what it holds
+    goes out when `schedule_delay` (5 s) passes. The queue is no longer
+    closed: `force_flush` and `shutdown` send a request with a reply channel,
+    the worker drains the queue (`try_pop`) in full batches and the rest,
+    answers, and on `stop` ends. Spans ended after shutdown are ignored.
+  - `force_flush` and `shutdown` wait at most `export_timeout` (30 s), for
+    sending the request as well as for the answer, then fail with "took longer
+    than …; queued spans may be lost"; `shutdown` still shuts the exporter
+    down. The bound on the send was a bug found here: a timed-out flush left
+    its request in the one-slot channel, and a later `shutdown` blocked on it
+    forever. The test now runs both on a thread of their own with `select`
+    timeouts, so such a hang fails in seconds.
+  - Options are `?` (code, then `OTEL_BSP_SCHEDULE_DELAY`,
+    `OTEL_BSP_EXPORT_TIMEOUT` (ms), `OTEL_BSP_MAX_QUEUE_SIZE`,
+    `OTEL_BSP_MAX_EXPORT_BATCH_SIZE`, then defaults); a value that isn't a
+    whole number above 0 is a warning and the default; a batch above the
+    queue is cut to it, with a warning. `config()` returns what is used.
+  - Tests: a part-full batch out after the delay; flush exporting what is
+    queued and the processor running on; flush and shutdown giving up behind a
+    stuck export; the provider's flush; the settings and their warnings. 20
+    runs and 10 under `-prod` clean. Six mutations (unbounded request send,
+    timer not exporting, flush not draining, `0` accepted, and P5.4's) fail.
 - **P5.6** Fake collector tests: a `net.http` server in the test that records
   bodies; batching by size and time, drop on a full queue, retry on 503, flush on
   shutdown.
+  *Done* (`exporters/otlphttp/collector_test.v`). A `net.http.Server` on a
+  free port (`127.0.0.1:0`) answers from a script (503 with `Retry-After: 0`,
+  400 with a body, else 200), can hold a request until released, and records
+  method, path, headers and body. The SDK, a batch processor, this exporter
+  and `net.http` run as an app would: full batches then the rest at shutdown
+  (`[a b] [c d] [e]`), headers (`application/json`, the API key, the user
+  agent); a part batch after the delay; a 503 retried once with the same body
+  and the spans arriving once; a 400 reported to `on_error` with its body and
+  not retried; a held collector costing two spans of five, none waiting; a
+  collector that is gone reported. 15 runs clean; dropping the retry fails it.
+  - **Bug found in P5.3:** `max_retries: 0` in `http.fetch` meant no attempt
+    at all ("exhausted retries"): net.http counts attempts, not retries. Now
+    1. P5.3's fake transport couldn't see it; this test did on its first run.
 - **P5.7** By hand: the OpenTelemetry Collector in Docker with the `debug`
   exporter, and Jaeger all-in-one. Record the commands in the README.
+  *Done* (2026-10-14; README section "Seeing spans in a collector and
+  Jaeger"). Collector `otel/opentelemetry-collector-contrib:0.120.0` (OTLP/HTTP
+  on 4318, `debug` exporter, forwarding OTLP/gRPC to Jaeger) and
+  `jaegertracing/jaeger:2.4.0` on a `otel-dev` Docker network. A scratch
+  program sent a three-level trace (remote parent from a `traceparent`, every
+  attribute type, an event, `record_error`, an error status, a plain ref)
+  through the batch processor and `otlphttp`. The collector's debug output
+  showed every field as sent (ids, parents, kinds, types, the resource's
+  `telemetry.sdk.*`, `exception.type` without a message); Jaeger's API
+  returned the trace under `otel-v-smoke` with the parent chain intact and
+  durations nested (3,828 > 3,801 > 3,389 µs). The README's config is inline,
+  so it needs no file from the repository; P6.2 puts the same in a
+  `docker-compose.yml`.
 
 ### P6. Examples and docs
 
