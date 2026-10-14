@@ -118,6 +118,7 @@ fn markdown_files() []string {
 fn test_the_docs_show_the_code_that_runs() {
 	update := os.getenv('UPDATE_SNIPPETS') == '1'
 	mut problems := []string{}
+	mut checked := 0
 	for file in markdown_files() {
 		path := os.join_path(root, file)
 		mut lines := os.read_lines(path)!
@@ -136,6 +137,7 @@ fn test_the_docs_show_the_code_that_runs() {
 				''
 			})!
 			got := lines[b.start..b.end].join('\n')
+			checked++
 			if got == want {
 				continue
 			}
@@ -154,6 +156,7 @@ fn test_the_docs_show_the_code_that_runs() {
 		}
 	}
 	assert problems.len == 0, problems.join('\n')
+	assert checked > 0
 }
 
 fn test_dedent() {

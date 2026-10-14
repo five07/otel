@@ -806,6 +806,44 @@ All in vgraph's shape (section 1): examples with their own `v.mod`, README and
 - **P6.7** README: what's there and what isn't (traces only, JSON only), status
   with the V commit, a quick start from the snippets, links to the guides.
 
+*P6 done* (2026-10-14, the seven blocks in one run at the user's request).
+- P6.1 `examples/http_service` on `net.http.Server` (not veb: the tracing is the
+  point). `app.v`: per request, the caller's trace through a `GetterCarrier`
+  over `req.header.get_custom`, a server span `GET /hello` (or `GET unknown`)
+  with `http.request.method`, `url.path`, `http.route`,
+  `http.response.status_code`, a child span `greet`, and an `X-Trace-Id`
+  response header. `main.v`: `otlphttp` + batch processor from the environment,
+  `PORT`, and ctrl-c shutting the provider down so queued spans go out.
+  `main_test.v` over HTTP on a free port with an in-memory exporter: a
+  continued trace, a new one, a 404, an unsampled caller followed. HTTP names
+  added to `semconv`.
+- P6.2 `docker-compose.yml` and `collector.yaml` (the P5.7 stack). Run for real:
+  `GET /hello` under the caller's span in Jaeger, `greet` its child, two traces
+  under `http_service`, both sent by the ctrl-c shutdown. (A first run went
+  wrong because a broad `pkill -f` stopped the containers too: signal by PID.)
+- P6.3 `examples/refs`: `record` (four tool calls of a billing agent, each span
+  with `tool.args_ref`, written by the stdout exporter to `traces.jsonl`) and
+  `find '<json>'` (the ref again, the spans with it). Tests: Alice's calls
+  found in any key order, no email, account or subject in the file, another key
+  finds nothing. Run by hand with an `openssl` key, and without one (each run
+  its own key, nothing found, as the README explains). `traces.jsonl` ignored.
+- P6.4 `docs/README.md` (index), `docs/getting-started.md` (install, provider,
+  spans, propagation, shutdown, seeing them). `docs_test.v` has its
+  `assert checked > 0` back; a hand-made drift fails it with the line and fix.
+- P6.5 `docs/configuration.md` (every variable, by area, with defaults; which
+  bad values warn and which are errors) and `docs/refs.md` (modes, keys,
+  length, JCS, `from_struct`, the Python vectors, what a ref doesn't protect).
+- P6.6 `docs/instrumenting-a-library.md`: a provider option defaulting to
+  `noop_tracer_provider()` (an interface default in `@[params]` works), the
+  caller's context, explicit times and their resolution, what a span carries,
+  testing with the in-memory exporter.
+- P6.7 README: what it is, status, a quick start (a snippet whose test sends it
+  to a local server standing in for a collector), what it does and doesn't, docs
+  and examples, the collector commands, contributing in vgraph's shape.
+- Snippets (`docs/snippets`): `tracing.v`, `configured.v`, `refs.v`,
+  `library.v`, `quickstart.v`, each run by a test. Every ```v block in the
+  README and guides comes from them (no `v ignore` loophole).
+
 ### P7. Release v0.1.0
 
 - **P7.1** Benchmarks: no-op span start and end, sampled span to an in-memory

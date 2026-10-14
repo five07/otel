@@ -27,3 +27,16 @@ pub const exception_type = 'exception.type'
 // exception_message is an error's message. It can quote the values that
 // failed, so the SDK records it only when asked.
 pub const exception_message = 'exception.message'
+
+// http_request_method is the request's method, such as `GET`.
+pub const http_request_method = 'http.request.method'
+
+// http_route is the route a request matched, such as `/users/:id`: the path
+// with its variable parts as names, so all its requests group together.
+pub const http_route = 'http.route'
+
+// http_response_status_code is the response's status code, such as `200`.
+pub const http_response_status_code = 'http.response.status_code'
+
+// url_path is the request's path, such as `/users/42`.
+pub const url_path = 'url.path'

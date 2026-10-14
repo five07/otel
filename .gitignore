@@ -5,3 +5,6 @@
 
 # V build caches left by `v run` on a .vv file
 .*.v3cc.*/
+
+# written by examples/refs
+traces.jsonl
