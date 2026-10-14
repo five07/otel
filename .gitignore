@@ -1,0 +1,7 @@
+*.so
+*.dylib
+*.exe
+.env
+
+# V build caches left by `v run` on a .vv file
+.*.v3cc.*/
