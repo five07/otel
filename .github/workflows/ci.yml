@@ -1,0 +1,39 @@
+name: CI
+
+# Only on main: pushes, which include merges into it.
+on:
+  push:
+    branches: [main]
+
+env:
+  # The V commit otel is built against: V master, the same as vgraph's, until a
+  # 0.5.x release has what both need. Bump it on purpose.
+  V_COMMIT: 04cb7fa314b95dfc5681768ed0598d53cb87e72e
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: otel
+          persist-credentials: false
+      - name: Build V
+        run: |
+          git clone --filter=blob:none https://github.com/vlang/v vlang
+          git -C vlang checkout "$V_COMMIT"
+          make -C vlang -j4
+          sudo ./vlang/v symlink
+      - name: Install otel as five07.otel, for the SDK, the examples and the snippets
+        run: v run otel/examples/setup.vsh
+      - name: Check formatting
+        run: v fmt -verify otel
+      - name: Check doc comments
+        # the library modules only; -W makes a missing doc comment fail the job
+        run: v vet -W otel/*.v otel/sdk otel/propagation otel/ref otel/exporters otel/semconv
+      - name: Build the API docs
+        # the library modules only (`.vdocignore`); fails on a doc that can't build
+        run: v doc -f html -m -o "$RUNNER_TEMP/api" -no-timestamp otel
+      - name: Test
+        run: v test otel

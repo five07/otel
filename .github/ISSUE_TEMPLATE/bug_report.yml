@@ -1,0 +1,95 @@
+name: Bug report
+description: Something in otel does the wrong thing, or fails.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. The smaller the program that shows it, the sooner
+        it can be fixed. If it turns out to be a bug in V itself, it gets the
+        `upstream` label and an issue on vlang/v. If it happens only under
+        `v run`, try `v -nocache run .` first: V master's `v run` has a known bug
+        with interfaces across modules.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, and what went wrong. Paste the full error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: If it's about what the standard requires, a link to the spec's section helps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: The code
+      description: How the provider is built, and the code that records the telemetry, cut down to what shows the bug.
+      render: v
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: What was exported
+      description: |
+        The spans as the stdout exporter prints them, or as the collector received them.
+        Take out any attribute values you wouldn't want public first.
+      render: json
+    validations:
+      required: false
+
+  - type: input
+    id: v-version
+    attributes:
+      label: V version
+      description: The output of `v version`, with its commit.
+      placeholder: V 0.5.2 04cb7fa
+    validations:
+      required: true
+
+  - type: input
+    id: otel-version
+    attributes:
+      label: otel version
+      description: The release, or the commit you are on (`git -C ~/.vmodules/five07/otel rev-parse --short HEAD`).
+    validations:
+      required: true
+
+  - type: dropdown
+    id: exporter
+    attributes:
+      label: Exporter
+      options:
+        - OTLP/HTTP (five07.otel.exporters.otlphttp)
+        - stdout (five07.otel.exporters.stdout)
+        - my own
+        - none (API only, no SDK)
+    validations:
+      required: true
+
+  - type: input
+    id: backend
+    attributes:
+      label: Collector or backend
+      description: Where the telemetry goes, with its version.
+      placeholder: OpenTelemetry Collector 0.120, Jaeger 2.4
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: The output of `v doctor`.
+      render: text
+    validations:
+      required: false

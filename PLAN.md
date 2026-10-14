@@ -58,8 +58,10 @@ These came out of the first review (2026-10-14) and are not open:
   and an SDK the app wires up:
   - `five07.otel`: API: `TracerProvider`, `Tracer`, `Span` interfaces, `SpanContext`,
     attributes, status, span kinds, the context helpers, no-op implementations;
-  - `five07.otel.sdk.sdktrace`: the trace SDK: provider, spans, samplers,
-    processors, ids (named as Go's usual alias, since V's stdlib has a `trace`);
+  - `five07.otel.sdk.trace`: the trace SDK: provider, spans, samplers,
+    processors, ids. SDK modules are named for their signal, as in Go
+    (`sdk/trace`, later `sdk/metric`, `sdk/log`), even where V's stdlib has a
+    module of the same name; an app that wants both aliases one;
   - `five07.otel.sdk.resource`: `Resource` and its environment detector;
   - `five07.otel.propagation`: W3C `traceparent`, `tracestate`, `baggage`;
   - `five07.otel.ref`: hashed refs and the JSON canonicalizer;
@@ -120,7 +122,7 @@ unwrap), and the same pair for baggage.
 `otel.TracerProvider` (interface) in their config, defaulting to
 `otel.noop_tracer_provider()`, and get a tracer with
 `provider.tracer('name', version: '1.2.0')`. The app builds one
-`sdktrace.TracerProvider` at startup and passes it on. Alternative: an opt-in
+`sdk.trace.TracerProvider` at startup and passes it on. Alternative: an opt-in
 global behind `$if otel_globals ?` for apps that build with `-enable-globals`.
 Not in v0.1.0 unless asked.
 > A: agreed
@@ -210,18 +212,18 @@ can be done any time after it.
   creates `develop`.
   *Done.* Also copied vgraph's `.editorconfig` and `.gitattributes`. fmt, vet,
   test (0 files) and `v doc -m` (8 modules) pass. V's stdlib has its own `trace`
-  module (`vlib/trace`, a timing profiler), so the trace SDK is `sdk/sdktrace`,
-  Go's usual import alias for its own; metrics and logs follow as `sdk/sdkmetric`
-  and `sdk/sdklog`.
+  module (`vlib/trace`, a timing profiler). Renamed to `sdk/sdktrace` for it in
+  P0.2, then back to `sdk/trace` by the user's call: it isn't a concern, and an
+  app that imports both aliases one (section 1, layout).
 - **P0.2** Check that V handles the layout: a test program in `regressions/` that
-  imports `five07.otel` and `five07.otel.sdk.sdktrace` through a local module path,
+  imports `five07.otel` and `five07.otel.sdk.trace` through a local module path,
   with an interface in one and its implementation in the other. Record what works.
   *Done.* Probed in a scratch copy: the API module with `Span`, `Tracer` and
-  `TracerProvider` interfaces and a span in a `context.Context`, `sdktrace`
-  implementing them, and an app importing both beside vlib's `trace`. The layout
+  `TracerProvider` interfaces and a span in a `context.Context`, the SDK
+  module implementing them, and an app importing both beside vlib's `trace`. The layout
   works: `v build`, `v test`, `-prod`, `-nocache` and `-cc tcc` all give the right
-  results, and the vlib `trace` import doesn't clash.
-  - Imports of `five07.otel` from inside the repo (sdktrace's own tests too)
+  results (the probe used the name `sdktrace` beside vlib's `trace`).
+  - Imports of `five07.otel` from inside the repo (the SDK's own tests too)
     need the checkout linked into `VMODULES`, so P0.5's `setup.vsh` comes before
     P2's first test, and CI links it as vgraph's does.
   - V bug: plain `v run` (cached modules linked as a dev dylib) miscompiles a
@@ -233,12 +235,37 @@ can be done any time after it.
     READMEs say `v -nocache run .` until it's fixed. Worth reporting upstream.
 - **P0.3** CI as vgraph's (section 1): `ci.yml` with the pinned `V_COMMIT`,
   fmt, vet, `v doc`, test.
+  *Done* (after P0.5, which it needs). One job: build V at `V_COMMIT`, `v run
+  otel/examples/setup.vsh`, fmt, vet, `v doc`, test. Every step passes run
+  locally from the parent folder with a scratch `VMODULES`. On push to `main`
+  only, as vgraph; nothing checks `develop` until a merge.
+  - `v vet` only warns about a missing doc comment and exits 0, so it can't fail
+    a job; here it runs with `-W`. vgraph's CI runs it without, so its doc check
+    has never failed a build (for vgraph's plan).
+  - `v vet` looks back from a function to the first `}` for a comment, so the
+    first function of a file, before any `}`, takes the module's doc comment as
+    its own and isn't checked. Review that one by eye. It checks functions only,
+    not structs, interfaces or consts.
 - **P0.4** GitHub templates copied from vgraph and adapted: the pull request
   checklist (no generated code or PostgreSQL items; add "the OTLP JSON tests
   pass"), the issue forms.
+  *Done.* PR checklist: tests (with `setup.vsh` and the OTLP golden files), a
+  telemetry item (nothing reaches a span the caller didn't put there), docs and
+  snippets, fmt and `vet -W`, regressions. Bug form asks for the provider and
+  recording code, what was exported (values scrubbed), V and otel versions, the
+  exporter, the collector; it points at `v -nocache run .` for the `v run` bug.
+  Feature form asks for the spec section or Go SDK feature in place of Ent's.
+  `config.yml` adds a link to the specification. The labels the forms use
+  (`bug`, `docs`, `feature request`, and `upstream`) must exist on GitHub.
 - **P0.5** `examples/setup.vsh` (vgraph's, for `five07.otel`) and the
   `docs/snippets` project with its `docs_test.v`, ported from vgraph and passing
   with no snippets yet.
+  *Done.* `setup.vsh` is vgraph's with the names changed; tried on a scratch
+  `VMODULES`: links, says so on a second run, and refuses (exit 1) when another
+  `five07.otel` is installed. `docs_test.v` is vgraph's without its last check
+  that at least one block was checked, which fails with no guides; put
+  `assert checked > 0` back in P6.4 with the first guide. The user runs
+  `v run examples/setup.vsh` once (not run on `~/.vmodules` here).
 
 ### P1. API module (`five07.otel`)
 
@@ -257,7 +284,7 @@ can be done any time after it.
 - **P1.6** Context helpers (Q1): span in and out of `context.Context`; tests with
   `context.background()` and nested values.
 
-### P2. Trace SDK (`five07.otel.sdk.sdktrace`)
+### P2. Trace SDK (`five07.otel.sdk.trace`)
 
 - **P2.1** Id generator (Q7): seeded from `crypto.rand`, safe across threads;
   a deterministic one for tests.
