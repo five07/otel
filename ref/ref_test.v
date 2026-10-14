@@ -121,3 +121,39 @@ fn test_keys_from_config_and_the_environment() {
 	_ := Refs.new(mode: .plain)!
 	os.unsetenv('OTEL_REF_KEY')
 }
+
+struct Recipient {
+	city string
+}
+
+struct Payment {
+	to        string
+	amount    int
+	currency  string @[json: 'ccy']
+	note      string @[skip]
+	tags      []string
+	recipient Recipient
+}
+
+fn test_from_struct_uses_the_json_form() {
+	p := Payment{
+		to:        'alice@example.com'
+		amount:    120
+		currency:  'EUR'
+		note:      'left out'
+		tags:      ['b', 'a']
+		recipient: Recipient{'Lyon'}
+	}
+	v := from_struct(p)!
+	assert canonical(v)! == '{"amount":120,"ccy":"EUR","recipient":{"city":"Lyon"},"tags":["b","a"],"to":"alice@example.com"}'
+	// a skipped field doesn't change the ref
+	refs := Refs.new(key: fixed_key())!
+	assert refs.ref(v)! == refs.ref(from_struct(Payment{
+		...p
+		note: 'other'
+	})!)!
+	assert refs.ref(v)! != refs.ref(from_struct(Payment{
+		...p
+		amount: 121
+	})!)!
+}

@@ -44,3 +44,11 @@ pub fn from_json(a json2.Any) !Value {
 		else { error('a ${a.type_name()} is not a JSON value') }
 	}
 }
+
+// from_struct converts `v` (a struct, or anything `json2.encode` takes) into a
+// `Value` through its JSON form, so its `@[json]` names and `@[skip]` fields
+// apply. Numbers come back as JSON's floats: an integer beyond 2⁵³ is rounded,
+// as JCS does; build the `Value` with `i64(n)` to keep one exact.
+pub fn from_struct[T](v T) !Value {
+	return from_json(json2.decode[json2.Any](json2.encode(v))!)
+}

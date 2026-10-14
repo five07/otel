@@ -621,6 +621,12 @@ a secure seed. A bad `OTEL_RESOURCE_ATTRIBUTES` still keeps
   repository wasn't changed. On these inputs Python's `json.dumps(sort_keys)` is
   JCS; it differs for non-ASCII text and exponent floats (Q5), which is when
   harness-trace-lab would need its JCS change.
+- Added after, at the user's request: `from_struct[T](v) !Value`, through
+  `json2.encode` and `decode`, so `@[json]` names and `@[skip]` apply, a
+  `time.Time` is its ISO-8601 string, and numbers are JSON's floats (an integer
+  beyond 2⁵³ is rounded, as JCS does, unlike Python's exact integers). Tested
+  in the module and from another project with its own struct (the generic
+  crosses modules, as `json2.encode` does; no compiler trouble).
 - V bug: `keys()` on the smart-cast map branch of a recursive sum type gives
   the wrong type (`regressions/smartcast_map_keys.vv`); worked around by
   collecting keys with `for k, _ in v`.
