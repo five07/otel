@@ -116,10 +116,18 @@ fn test_descriptions() {
 	assert parent_based(trace_id_ratio_based(0.5)).description() == 'ParentBased{root:TraceIDRatioBased{0.5},remoteParentSampled:AlwaysOnSampler,remoteParentNotSampled:AlwaysOffSampler,localParentSampled:AlwaysOnSampler,localParentNotSampled:AlwaysOffSampler}'
 }
 
+fn sampler_description() (string, []string) {
+	s, warnings := sampler_from_env()
+	return s.description(), warnings
+}
+
 fn test_sampler_from_the_environment() {
 	os.unsetenv('OTEL_TRACES_SAMPLER')
 	os.unsetenv('OTEL_TRACES_SAMPLER_ARG')
-	assert sampler_from_env()!.description() == parent_based(always_on_sampler()).description()
+	default_desc := parent_based(always_on_sampler()).description()
+	d, w := sampler_description()
+	assert d == default_desc
+	assert w.len == 0
 	for name, want in {
 		'always_on':                'AlwaysOnSampler'
 		'ALWAYS_OFF':               'AlwaysOffSampler'
@@ -128,30 +136,31 @@ fn test_sampler_from_the_environment() {
 		'parentbased_traceidratio': parent_based(trace_id_ratio_based(1)).description()
 	} {
 		os.setenv('OTEL_TRACES_SAMPLER', name, true)
-		assert sampler_from_env()!.description() == want
+		got, _ := sampler_description()
+		assert got == want
 	}
 	os.setenv('OTEL_TRACES_SAMPLER', 'traceidratio', true)
 	os.setenv('OTEL_TRACES_SAMPLER_ARG', ' 0.1 ', true)
-	assert sampler_from_env()!.description() == 'TraceIDRatioBased{0.1}'
+	tenth, _ := sampler_description()
+	assert tenth == 'TraceIDRatioBased{0.1}'
+	// a bad ratio is 1, with a warning
 	for arg, want in {
-		'half': 'OTEL_TRACES_SAMPLER_ARG: `half` is not a number'
-		'1.5':  'OTEL_TRACES_SAMPLER_ARG: `1.5` is not from 0 to 1'
-		'-0.1': 'OTEL_TRACES_SAMPLER_ARG: `-0.1` is not from 0 to 1'
+		'half': 'OTEL_TRACES_SAMPLER_ARG: `half` is not a number; using 1'
+		'1.5':  'OTEL_TRACES_SAMPLER_ARG: `1.5` is not from 0 to 1; using 1'
+		'-0.1': 'OTEL_TRACES_SAMPLER_ARG: `-0.1` is not from 0 to 1; using 1'
 	} {
 		os.setenv('OTEL_TRACES_SAMPLER_ARG', arg, true)
-		if _ := sampler_from_env() {
-			assert false, '`${arg}` was taken as a ratio'
-		} else {
-			assert err.msg() == want
-		}
+		got, warnings := sampler_description()
+		assert got == 'AlwaysOnSampler'
+		assert warnings == [want]
 	}
+	// an unknown sampler is the default, with a warning, and the provider builds
 	os.unsetenv('OTEL_TRACES_SAMPLER_ARG')
 	os.setenv('OTEL_TRACES_SAMPLER', 'jaeger_remote', true)
-	if _ := TracerProvider.new() {
-		assert false, 'an unknown sampler was taken'
-	} else {
-		assert err.msg() == 'OTEL_TRACES_SAMPLER: `jaeger_remote` is not a sampler this SDK has'
-	}
+	got, warnings := sampler_description()
+	assert got == default_desc
+	assert warnings == ['OTEL_TRACES_SAMPLER: `jaeger_remote` is not a sampler this SDK has; using parentbased_always_on']
+	_ := TracerProvider.new()!
 	os.unsetenv('OTEL_TRACES_SAMPLER')
 }
 

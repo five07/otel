@@ -39,15 +39,26 @@ mut:
 	stopped shared bool
 }
 
-// TracerProvider.new builds a provider. It fails when the environment it reads
-// is malformed, or when no secure seed for ids can be had.
+// TracerProvider.new builds a provider. A malformed environment variable is
+// written to stderr as a warning and its default used; it fails only when no
+// secure seed for ids can be had.
 pub fn TracerProvider.new(opts ProviderOptions) !&TracerProvider {
+	sampler := opts.sampler or {
+		s, warnings := sampler_from_env()
+		warn(warnings)
+		s
+	}
+	limits := opts.limits or {
+		l, warnings := limits_from_env()
+		warn(warnings)
+		l
+	}
 	return &TracerProvider{
-		resource:     opts.resource or { resource.default()! }
-		sampler:      opts.sampler or { sampler_from_env()! }
+		resource:     opts.resource or { resource.default() }
+		sampler:      sampler
 		id_generator: opts.id_generator or { IdGenerator(RandomIdGenerator.new()!) }
 		processors:   opts.processors.clone()
-		limits:       opts.limits or { limits_from_env()! }
+		limits:       limits
 	}
 }
 
@@ -181,27 +192,43 @@ pub fn (t &Tracer) start(ctx context.Context, name string, opts otel.SpanStartOp
 // `OTEL_ATTRIBUTE_COUNT_LIMIT`), `OTEL_SPAN_EVENT_COUNT_LIMIT`,
 // `OTEL_SPAN_LINK_COUNT_LIMIT`, `OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT` and
 // `OTEL_LINK_ATTRIBUTE_COUNT_LIMIT`. A value that isn't a whole number from 0
-// up is an error.
-fn limits_from_env() !SpanLimits {
+// up keeps its default, with a warning.
+fn limits_from_env() (SpanLimits, []string) {
 	d := SpanLimits{}
-	general := env_limit('OTEL_ATTRIBUTE_COUNT_LIMIT', d.attribute_count)!
+	mut warnings := []string{}
+	general := env_limit('OTEL_ATTRIBUTE_COUNT_LIMIT', d.attribute_count, mut warnings)
 	return SpanLimits{
-		attribute_count:      env_limit('OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT', general)!
-		event_count:          env_limit('OTEL_SPAN_EVENT_COUNT_LIMIT', d.event_count)!
-		link_count:           env_limit('OTEL_SPAN_LINK_COUNT_LIMIT', d.link_count)!
-		attributes_per_event: env_limit('OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT', d.attributes_per_event)!
-		attributes_per_link:  env_limit('OTEL_LINK_ATTRIBUTE_COUNT_LIMIT', d.attributes_per_link)!
-	}
+		attribute_count:      env_limit('OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT', general, mut
+			warnings)
+		event_count:          env_limit('OTEL_SPAN_EVENT_COUNT_LIMIT', d.event_count, mut
+			warnings)
+		link_count:           env_limit('OTEL_SPAN_LINK_COUNT_LIMIT', d.link_count, mut warnings)
+		attributes_per_event: env_limit('OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT', d.attributes_per_event, mut
+			warnings)
+		attributes_per_link:  env_limit('OTEL_LINK_ATTRIBUTE_COUNT_LIMIT', d.attributes_per_link, mut
+			warnings)
+	}, warnings
 }
 
-fn env_limit(name string, default_value int) !int {
+fn env_limit(name string, default_value int, mut warnings []string) int {
 	value := os.getenv(name).trim_space()
 	if value == '' {
 		return default_value
 	}
-	n := strconv.atoi(value) or { return error('${name}: `${value}` is not a whole number') }
+	n := strconv.atoi(value) or {
+		warnings << '${name}: `${value}` is not a whole number; using ${default_value}'
+		return default_value
+	}
 	if n < 0 {
-		return error('${name}: `${value}` is below 0')
+		warnings << '${name}: `${value}` is below 0; using ${default_value}'
+		return default_value
 	}
 	return n
+}
+
+// warn writes each warning to stderr, as `otel: <warning>`.
+fn warn(warnings []string) {
+	for w in warnings {
+		eprintln('otel: ${w}')
+	}
 }

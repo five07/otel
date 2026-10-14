@@ -219,34 +219,39 @@ fn test_span_limits_from_the_environment() {
 	for name in names {
 		os.unsetenv(name)
 	}
-	assert limits_from_env()! == SpanLimits{}
+	unset, no_warnings := limits_from_env()
+	assert unset == SpanLimits{}
+	assert no_warnings.len == 0
 	os.setenv('OTEL_ATTRIBUTE_COUNT_LIMIT', '10', true)
-	assert limits_from_env()!.attribute_count == 10
+	general, _ := limits_from_env()
+	assert general.attribute_count == 10
 	// the span's own variable wins over the general one
 	os.setenv('OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT', ' 20 ', true)
 	os.setenv('OTEL_SPAN_EVENT_COUNT_LIMIT', '0', true)
 	os.setenv('OTEL_SPAN_LINK_COUNT_LIMIT', '3', true)
 	os.setenv('OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT', '4', true)
 	os.setenv('OTEL_LINK_ATTRIBUTE_COUNT_LIMIT', '5', true)
-	assert limits_from_env()! == SpanLimits{
+	all, _ := limits_from_env()
+	assert all == SpanLimits{
 		attribute_count:      20
 		event_count:          0
 		link_count:           3
 		attributes_per_event: 4
 		attributes_per_link:  5
 	}
+	// a bad value keeps the default, with a warning
 	for bad, want in {
-		'many': 'OTEL_SPAN_LINK_COUNT_LIMIT: `many` is not a whole number'
-		'-1':   'OTEL_SPAN_LINK_COUNT_LIMIT: `-1` is below 0'
-		'1.5':  'OTEL_SPAN_LINK_COUNT_LIMIT: `1.5` is not a whole number'
+		'many': 'OTEL_SPAN_LINK_COUNT_LIMIT: `many` is not a whole number; using 128'
+		'-1':   'OTEL_SPAN_LINK_COUNT_LIMIT: `-1` is below 0; using 128'
+		'1.5':  'OTEL_SPAN_LINK_COUNT_LIMIT: `1.5` is not a whole number; using 128'
 	} {
 		os.setenv('OTEL_SPAN_LINK_COUNT_LIMIT', bad, true)
-		if _ := TracerProvider.new() {
-			assert false, '`${bad}` was taken as a limit'
-		} else {
-			assert err.msg() == want
-		}
+		limits, warnings := limits_from_env()
+		assert limits.link_count == 128
+		assert warnings == [want]
 	}
+	// and the provider still builds
+	_ := TracerProvider.new()!
 	for name in names {
 		os.unsetenv(name)
 	}

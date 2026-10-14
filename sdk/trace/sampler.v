@@ -180,31 +180,50 @@ pub fn (s ParentBasedSampler) description() string {
 // sampler_from_env returns the sampler `OTEL_TRACES_SAMPLER` names, with
 // `OTEL_TRACES_SAMPLER_ARG` as the ratio of the ratio samplers (1 if unset):
 // `always_on`, `always_off`, `traceidratio`, and `parentbased_` before each of
-// them. Unset, it is `parentbased_always_on`. Another name, or a ratio that
-// isn't a number from 0 to 1, is an error.
-fn sampler_from_env() !Sampler {
+// them. Unset, it is `parentbased_always_on`. Another name falls back to that
+// default, and a ratio that isn't a number from 0 to 1 to 1, each with a
+// warning, as the specification asks.
+fn sampler_from_env() (Sampler, []string) {
+	mut warnings := []string{}
 	name := os.getenv('OTEL_TRACES_SAMPLER').trim_space().to_lower()
 	arg := os.getenv('OTEL_TRACES_SAMPLER_ARG').trim_space()
-	ratio := if arg == '' {
-		1.0
-	} else {
-		r := strconv.atof64(arg) or {
-			return error('OTEL_TRACES_SAMPLER_ARG: `${arg}` is not a number')
+	mut ratio := 1.0
+	if arg != '' {
+		if r := strconv.atof64(arg) {
+			if r >= 0 && r <= 1 {
+				ratio = r
+			} else {
+				warnings << 'OTEL_TRACES_SAMPLER_ARG: `${arg}` is not from 0 to 1; using 1'
+			}
+		} else {
+			warnings << 'OTEL_TRACES_SAMPLER_ARG: `${arg}` is not a number; using 1'
 		}
-		if r < 0 || r > 1 {
-			return error('OTEL_TRACES_SAMPLER_ARG: `${arg}` is not from 0 to 1')
+	}
+	sampler := match name {
+		'', 'parentbased_always_on' {
+			parent_based(always_on_sampler())
 		}
-		r
+		'always_on' {
+			always_on_sampler()
+		}
+		'always_off' {
+			always_off_sampler()
+		}
+		'traceidratio' {
+			trace_id_ratio_based(ratio)
+		}
+		'parentbased_always_off' {
+			parent_based(always_off_sampler())
+		}
+		'parentbased_traceidratio' {
+			parent_based(trace_id_ratio_based(ratio))
+		}
+		else {
+			warnings << 'OTEL_TRACES_SAMPLER: `${name}` is not a sampler this SDK has; using parentbased_always_on'
+			parent_based(always_on_sampler())
+		}
 	}
-	return match name {
-		'', 'parentbased_always_on' { parent_based(always_on_sampler()) }
-		'always_on' { always_on_sampler() }
-		'always_off' { always_off_sampler() }
-		'traceidratio' { trace_id_ratio_based(ratio) }
-		'parentbased_always_off' { parent_based(always_off_sampler()) }
-		'parentbased_traceidratio' { parent_based(trace_id_ratio_based(ratio)) }
-		else { error('OTEL_TRACES_SAMPLER: `${name}` is not a sampler this SDK has') }
-	}
+	return sampler, warnings
 }
 
 // format_ratio writes a whole number without a fraction (`1`, not `1.0`), as

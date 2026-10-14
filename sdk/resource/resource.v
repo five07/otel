@@ -77,33 +77,48 @@ pub fn sdk() Resource {
 
 // from_env returns the resource the environment describes:
 // `OTEL_RESOURCE_ATTRIBUTES`, then `OTEL_SERVICE_NAME`, which wins over a
-// `service.name` in the first. A malformed `OTEL_RESOURCE_ATTRIBUTES` is an
-// error, and none of it is used, as the specification asks.
-pub fn from_env() !Resource {
-	mut attrs := parse_resource_attributes(os.getenv('OTEL_RESOURCE_ATTRIBUTES'))!
+// `service.name` in the first. A malformed `OTEL_RESOURCE_ATTRIBUTES` is left
+// out whole, as the specification asks, with a warning on stderr.
+pub fn from_env() Resource {
+	r, warnings := env_resource()
+	for w in warnings {
+		eprintln('otel: ${w}')
+	}
+	return r
+}
+
+fn env_resource() (Resource, []string) {
+	mut warnings := []string{}
+	mut attrs := parse_resource_attributes(os.getenv('OTEL_RESOURCE_ATTRIBUTES')) or {
+		warnings << '${err.msg()}; the variable is ignored'
+		[]otel.KeyValue{}
+	}
 	service := os.getenv('OTEL_SERVICE_NAME').trim_space()
 	if service != '' {
 		attrs << otel.string_attr(semconv.service_name, service)
 	}
-	return Resource.new(attrs, '')
+	return Resource.new(attrs, ''), warnings
 }
 
 // default returns what every app's resource starts from: this SDK's attributes,
 // `service.name` as `unknown_service:<executable>`, and the environment's
-// attributes over them. An app merges its own over this, so they win over the
-// environment's. A malformed environment is an error; `default_without_env` is
-// the same resource without it, for an app that reports that and carries on.
-pub fn default() !Resource {
-	return default_without_env().merge(from_env()!)!
+// attributes (`from_env`) over them. An app merges its own over this, so they
+// win over the environment's.
+pub fn default() Resource {
+	r, warnings := default_with_warnings()
+	for w in warnings {
+		eprintln('otel: ${w}')
+	}
+	return r
 }
 
-// default_without_env returns `default`'s resource without the environment's
-// attributes.
-pub fn default_without_env() Resource {
+fn default_with_warnings() (Resource, []string) {
 	executable := os.file_name(os.executable()).all_before_last('.exe')
 	mut attrs := sdk().attributes
 	attrs << otel.string_attr(semconv.service_name, 'unknown_service:${executable}')
-	return Resource.new(attrs, '')
+	env, warnings := env_resource()
+	attrs << env.attributes
+	return Resource.new(attrs, ''), warnings
 }
 
 // parse_resource_attributes reads `key=value,key=value`, values

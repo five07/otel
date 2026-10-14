@@ -81,6 +81,14 @@ These came out of the first review (2026-10-14) and are not open:
   turned off by config.
 - **Releases:** v0.1.0 traces (with span events and links), v0.2.0 metrics,
   v0.3.0 logs and events. GenAI conventions and the V harness are a stretch goal.
+- **Bad environment variables** (the user's rule, 2026-10-14): when a bad or
+  unknown value has a safe default, it is a warning on stderr (`otel: …`) and
+  the default is used, as the specification asks: samplers, span limits,
+  `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_PROPAGATORS`. When falling back would cause
+  harm, it is an error: a malformed `OTEL_REF_KEY` (a random key would quietly
+  make refs no one can look up), and in P5 a malformed exporter endpoint (data
+  sent somewhere else). Readers return their warnings as a list, so tests check
+  them; only the public entry point prints.
 - **Conventions from vgraph** (Q9; look at `~/Projects/vlang/vgraph` when in doubt):
   - **Branches:** work on `develop`, pull requests go to `develop`, `main` gets
     releases. CI runs on pushes to `main`.
@@ -580,6 +588,45 @@ packages; `propagation` only reads and writes headers.
 - **P4.5** Attribute helper: `refs.attribute('tool.args_ref', v) ?KeyValue`
   (none when mode is `.off`); cross-language vectors: a JSON file of inputs, key
   and expected refs, checked here and by a small script in harness-trace-lab.
+
+*Environment warnings* (2026-10-14, before P4; section 1's rule). Samplers,
+limits and `OTEL_RESOURCE_ATTRIBUTES` went from errors to warnings with
+defaults: `sampler_from_env`, `limits_from_env` and `env_resource` return
+`(value, []string)`; `resource.default()` and `from_env()` no longer return
+`!` and `default_without_env` is gone; `TracerProvider.new` fails only without
+a secure seed. A bad `OTEL_RESOURCE_ATTRIBUTES` still keeps
+`OTEL_SERVICE_NAME`. Tests check the exact warnings.
+
+*P4 done in one pass* (2026-10-14, at the user's request; `ref/value.v`,
+`jcs.v`, `ref.v`, tests, `ref/testdata/`).
+- P4.1: `ref.Value = Null | bool | int | i64 | f64 | string | []Value |
+  map[string]Value`; `int` is there so `refs.ref(42)` works (the int-literal
+  bug, P1.3). `from_json(json2.Any) !Value` (numbers as JSON's floats; a time is
+  an error). V's `x.json2` is now an alias of `json2`.
+- P4.2–4.3: `canonical(v) !string`, RFC 8785: keys sorted by UTF-16 code units,
+  strings escaped as `JSON.stringify`, numbers by JavaScript's rules from Ryu's
+  shortest digits (`strconv.ftoa_64`), which needed no split. `i64` is written
+  exactly (beyond 2⁵³ a JavaScript JCS would round; documented). Tested with all
+  of RFC 8785's number vectors (bit patterns), its key-order example (U+1F600
+  before U+FB33), its full example document, escapes, and non-UTF-8 refused.
+- P4.4: `Refs.new(RefConfig{mode, length, key}) !`: `.hmac` (default,
+  `hmac:<hex>`), `.plain` (`sha256:<hex>`), `.off` (`''` / none). Length 16 to
+  64 in steps of 8, default 32. Key from config, else `OTEL_REF_KEY` (hex, at
+  least 32 bytes), else random with one warning; a malformed or short key is an
+  error (section 1). `ref(v)`, `plain(v)` (unkeyed even in hmac mode).
+- P4.5: `attribute(key, v) ?otel.KeyValue` and `plain_attribute`, none when off
+  or unwritable (NaN). `ref/testdata/check_vectors.py` makes `vectors.json` (90
+  cases: 15 ASCII inputs × hmac/plain × 16/32/64) the way harness-trace-lab
+  makes refs; V's refs match all 90. It is not run in harness-trace-lab: that
+  repository wasn't changed. On these inputs Python's `json.dumps(sort_keys)` is
+  JCS; it differs for non-ASCII text and exponent floats (Q5), which is when
+  harness-trace-lab would need its JCS change.
+- V bug: `keys()` on the smart-cast map branch of a recursive sum type gives
+  the wrong type (`regressions/smartcast_map_keys.vv`); worked around by
+  collecting keys with `for k, _ in v`.
+- Seven mutations (byte order for keys, the decimal and the 21-digit cutoffs,
+  hmac unkeyed, control characters unescaped, no length check, a bad key
+  replaced by a random one) each fail the tests.
 
 ### P5. Exporters
 

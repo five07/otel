@@ -76,37 +76,39 @@ fn test_the_environment_and_its_precedence() {
 	os.setenv('OTEL_RESOURCE_ATTRIBUTES', 'service.name=from-attrs,deployment.environment.name=prod',
 		true)
 	os.unsetenv('OTEL_SERVICE_NAME')
-	r := default()!
+	r := default()
 	assert r.get('service.name')? as string == 'from-attrs'
 	assert r.get('deployment.environment.name')? as string == 'prod'
 	assert r.get('telemetry.sdk.name')? as string == 'five07.otel'
 
 	// OTEL_SERVICE_NAME wins over OTEL_RESOURCE_ATTRIBUTES
 	os.setenv('OTEL_SERVICE_NAME', 'checkout', true)
-	assert default()!.get('service.name')? as string == 'checkout'
+	assert default().get('service.name')? as string == 'checkout'
 
 	// and the app's own attributes win over both
-	app := default()!.merge(Resource.new([otel.string_attr('service.name', 'from-code')],
+	app := default().merge(Resource.new([otel.string_attr('service.name', 'from-code')],
 		''))!
 	assert app.get('service.name')? as string == 'from-code'
 	assert app.get('deployment.environment.name')? as string == 'prod'
 
-	// a malformed variable is an error, and none of it is used
+	// a malformed variable is left out whole, with a warning; the service name
+	// still applies
 	os.setenv('OTEL_RESOURCE_ATTRIBUTES', 'deployment.environment.name=prod,oops', true)
-	if _ := default() {
-		assert false, 'a malformed OTEL_RESOURCE_ATTRIBUTES was used'
-	}
-	fallback := default_without_env()
-	assert fallback.get('deployment.environment.name') == none
+	bad, warnings := default_with_warnings()
+	assert bad.get('deployment.environment.name') == none
+	assert bad.get('service.name')? as string == 'checkout'
+	assert warnings == ['OTEL_RESOURCE_ATTRIBUTES: entry 2 has no `=`; the variable is ignored']
 
 	os.unsetenv('OTEL_RESOURCE_ATTRIBUTES')
 	os.unsetenv('OTEL_SERVICE_NAME')
+	_, none_ := default_with_warnings()
+	assert none_.len == 0
 }
 
 fn test_without_a_service_name_it_is_unknown_service() {
 	os.unsetenv('OTEL_RESOURCE_ATTRIBUTES')
 	os.unsetenv('OTEL_SERVICE_NAME')
-	name := default()!.get('service.name')? as string
+	name := default().get('service.name')? as string
 	assert name.starts_with('unknown_service:')
 	assert name.len > 'unknown_service:'.len
 }
