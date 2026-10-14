@@ -271,18 +271,82 @@ can be done any time after it.
 
 - **P1.1** `TraceId` (16 bytes) and `SpanId` (8 bytes): hex encode and decode,
   `is_valid()` (not all zero), tests.
+  *Done* (`ids.v`, `ids_test.v`). Structs over a fixed array (`bytes [16]u8`,
+  public, read-only), so the id generator builds them directly and `==` compares
+  by value. `TraceId.from_hex` / `SpanId.from_hex` (the static constructor style
+  vgraph uses), `hex()`, `str()` (the hex, for interpolation), `is_valid()`. As
+  in Go: lowercase hex only, and the all-zero id is an error from `from_hex`.
+  Errors give the expected length or "lowercase hex only", never the input,
+  which comes from a header. Tests use the W3C spec's example ids; a mutation
+  (accepting upper case) makes them fail.
 - **P1.2** `TraceFlags` (sampled bit), `TraceState` (an ordered list of key-value
   pairs, kept as-is, with the spec's limits: 32 entries, key and value grammar),
   `SpanContext` (ids, flags, state, `remote`), tests.
+  *Done* (`span_context.v`, `trace_state.v`, tests). `TraceFlags{bits}` with
+  `is_sampled`, `with_sampled` (other bits kept, for later spec versions),
+  `hex`. `TraceState` never changes, as Go's: `insert` (checks the W3C key and
+  value grammar, moves the entry first, drops the last when a new one passes 32),
+  `delete`, `get ?string`, `len`, `members` (a copy), `str` (the header form).
+  Parsing the header stays in P3.3. `SpanContext` has public read-only fields,
+  `is_valid` (both ids), `is_sampled`; `==` compares by value, state included.
+  `v vet` prints notices (`== ''` over `.len == 0`) that `-W` doesn't fail on;
+  fix them anyway.
 - **P1.3** Attributes: `Value` sum type (string, bool, i64, f64, and arrays of
   each), `KeyValue`, helpers `otel.string('k', 'v')` and so on; tests.
+  *Done* (`attribute.v`, tests). `Value = string | bool | i64 | f64 | []string |
+  []bool | []i64 | []f64`; `KeyValue{key, value}`. Helpers are suffixed, by the
+  user's choice (2026-10-14): `string_attr`, `bool_attr`, `int_attr` (to i64),
+  `i64_attr`, `f64_attr`, and the lists `strings_attr`, `bools_attr`,
+  `ints_attr`, `i64s_attr`, `f64s_attr`, which keep a copy. V does accept
+  `otel.string(...)`, but a function named after a built-in type may not last.
+  No `attr(key, Value)` taking anything: an untyped `3` passed to a sum type
+  without `int` reaches the C compiler (`regressions/int_literal_to_sum_type.vv`).
+  Empty keys are the SDK's to drop (P2.3).
 - **P1.4** `SpanKind`, `StatusCode` (unset, ok, error), `Status`, `SpanStartOptions`
   (kind, attributes, links, start time, new root), `EndOptions` (end time).
+  *Done* (`span.v`, `span_test.v`). `SpanKind` with `internal` first, so it is
+  the zero value; `StatusCode` unset, ok, error, in OTLP's order (0, 1, 2), which
+  a test pins; `Status{code, description}`; `Link{span_context, attributes}`.
+  The options are `@[params]` structs, so calls read `start(ctx, 'name', kind:
+  .server)`; the times are `?time.Time`, none meaning now. The rules (an ok
+  status sticks, a description only with an error) belong to the SDK (P2.7).
+  `SpanKind` numbers differ from OTLP's (internal is 1 there): P5.2 maps them.
 - **P1.5** `Span`, `Tracer` and `TracerProvider` interfaces, and their no-op
   versions; tests that a no-op span from a context carrying a remote span context
   keeps that context (as Go does, so propagation works without an SDK).
+  *Done* (`span.v`, `tracer.v`, `noop.v`, `noop_test.v`), but the "keeps the
+  remote context" part moves to P1.6, which has the context helpers it needs;
+  until then `NoopTracer.start` returns `ctx` as is and an empty `NoopSpan`.
+  - `Span`'s methods aren't `mut`, so callers write `ctx, span := t.start(...)`,
+    not `mut span`. The SDK keeps a span's data in a `shared` field and locks it
+    (probed: 8 threads × 1,000 `set_attributes` on one span keep all 8,000, and
+    calls after `end` are ignored).
+  - `Span`: `span_context`, `is_recording`, `set_name`, `set_attributes(...KeyValue)`,
+    `add_event(name, EventOptions)`, `add_link`, `set_status(Status)`,
+    `record_error(IError, ErrorOptions)` (`with_message` per Q8), `end(EndOptions)`.
+    `Status` is `@[params]` too: `span.set_status(code: .error)`.
+  - `Tracer.start(ctx, name, SpanStartOptions) (context.Context, Span)`;
+    `TracerProvider.tracer(name, TracerOptions)` (version, schema URL,
+    attributes); `noop_tracer_provider()` and public `Noop*` structs.
+  - Checked from another module through the `VMODULES` link under `v test`: the
+    no-op API, and a library's own span and tracer types.
+  - A struct named `T` makes V master write broken C (`sync__ThreadLocalStorage_T`);
+    V reserves single capitals for generics, so don't use one.
 - **P1.6** Context helpers (Q1): span in and out of `context.Context`; tests with
-  `context.background()` and nested values.
+  `context.background()` and nested values. `NoopTracer.start` then takes the
+  parent's span context into its `NoopSpan`, with the test moved from P1.5.
+  *Done* (`context.v`, `context_test.v`, `noop.v`). The key is Q1's default: the
+  address of a private const (`voidptr(&span_key_cell)`), which V takes; each
+  key's cell will hold its own value so no compiler can merge two. A string key
+  can't find the span (tested). `context_with_span`, `span_from_context` (a
+  `NoopSpan` when none), and `context_with_span_context` for a parent read from
+  a header (P3.3 uses it). `NoopTracer.start` now carries the parent's span
+  context (none with `new_root`) and puts its span in the context, so a trace
+  passes through code that records nothing. Tests pass under `-prod` too, and
+  from another module. Baggage's pair of helpers comes with `Baggage` in P3.4.
+  Each `_test.v` compiles alone, so a test helper type (P1.5's `Recorder`) can't
+  be shared between test files; the SDK's in-memory exporter (P2.6) will be the
+  shared tool.
 
 ### P2. Trace SDK (`five07.otel.sdk.trace`)
 

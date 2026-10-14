@@ -1,0 +1,19 @@
+// An untyped integer literal passed to a parameter of a sum type that has no
+// `int` variant (here `i64`) passes the checker and stops in the C compiler:
+// `passing 'int' to parameter of incompatible type 'Value'`. It should be a V
+// error at the call, or the literal should become the sum type's `i64`.
+// Run: `v run int_literal_to_sum_type.vv` in this folder.
+// Worked around in `attribute.v`: no `attr(key, Value)` taking any value; the
+// typed helpers (`int_attr`, `i64_attr`, ...) take the literal as their own type.
+module main
+
+type Value = string | i64
+
+fn attr(v Value) Value {
+	return v
+}
+
+fn main() {
+	println(attr(i64(3)))
+	println(attr(3))
+}
