@@ -36,3 +36,26 @@ pub fn context_with_span_context(ctx context.Context, sc SpanContext) context.Co
 		context: sc
 	})
 }
+
+// baggage_key_cell exists for its address, the context key of the baggage.
+const baggage_key_cell = u8(2)
+
+fn baggage_key() context.Key {
+	return voidptr(&baggage_key_cell)
+}
+
+// context_with_baggage returns `ctx` carrying `baggage`, which replaces any it
+// had.
+pub fn context_with_baggage(ctx context.Context, baggage Baggage) context.Context {
+	return context.with_value(ctx, baggage_key(), baggage)
+}
+
+// baggage_from_context returns the baggage `ctx` carries, empty if none.
+pub fn baggage_from_context(ctx context.Context) Baggage {
+	if value := ctx.value(baggage_key()) {
+		if value is Baggage {
+			return value
+		}
+	}
+	return Baggage{}
+}

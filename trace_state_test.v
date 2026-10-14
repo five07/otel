@@ -86,3 +86,34 @@ fn test_values_follow_the_grammar() {
 		}
 	}
 }
+
+fn test_parse_reads_the_header() {
+	ts := TraceState.parse('rojo=00f067aa0ba902b7, congo=t61rcWkgMzE')!
+	assert ts.str() == 'rojo=00f067aa0ba902b7,congo=t61rcWkgMzE'
+	assert ts.get('congo')? == 't61rcWkgMzE'
+	// spaces, tabs and empty entries around entries are allowed
+	assert TraceState.parse(' a=1 ,\t,b=2\t')!.str() == 'a=1,b=2'
+	assert TraceState.parse('')!.len() == 0
+	assert TraceState.parse('tenant@system=v')!.get('tenant@system')? == 'v'
+}
+
+fn test_parse_round_trips_32_entries() {
+	mut parts := []string{}
+	for i in 0 .. 32 {
+		parts << 'k${i}=v${i}'
+	}
+	header := parts.join(',')
+	assert TraceState.parse(header)!.str() == header
+}
+
+fn test_parse_rejects_what_the_spec_rejects() {
+	mut too_many := []string{}
+	for i in 0 .. 33 {
+		too_many << 'k${i}=v'
+	}
+	for header in ['novalue', 'A=1', 'a=1,a=2', 'a=x=y', 'a=', 'a=b,=c', too_many.join(',')] {
+		if _ := TraceState.parse(header) {
+			assert false, '`${header}` was read'
+		}
+	}
+}

@@ -531,6 +531,42 @@ can be done any time after it.
 - **P3.5** Composite propagator; `OTEL_PROPAGATORS` (`tracecontext,baggage`, the
   default; unknown names warn and are skipped).
 
+*P3 done in one pass* (2026-10-14, at the user's request; `propagation/*.v`,
+`baggage.v`, `TraceState.parse` in `trace_state.v`, baggage helpers in
+`context.v`, tests). Parsing lives in the API, as in Go's `trace` and `baggage`
+packages; `propagation` only reads and writes headers.
+- P3.1: `TextMapCarrier` (`get ?string`, `keys`, `mut set`) and
+  `TextMapPropagator` (`inject(ctx, mut carrier)`, `extract(ctx, carrier)
+  context.Context`, `fields`). `MapCarrier.new(headers)` lowercases keys (HTTP
+  names are case-insensitive), `to_map()` for an outgoing request.
+  `GetterCarrier{get_fn}` for a framework with its own header type (section 3's
+  "getter fn"); extract only.
+- P3.2: `parse_traceparent` per the W3C: lowercase hex, `ff` invalid, version
+  `00` exactly 55 characters, a later version may carry more after a `-`,
+  all-zero ids invalid, spaces and tabs trimmed. Only the sampled flag is kept
+  in and out, as Go does. Tested with the W3C cases (5 valid, 14 invalid).
+- P3.3: `TraceState.parse` (spaces and empty entries allowed; a bad key or
+  value, a duplicate key, or more than 32 entries is an error). `TraceContext`:
+  extract gives a remote span context via `context_with_span_context`; a bad
+  `traceparent` leaves the context as it is, a bad `tracestate` is dropped
+  alone; inject writes nothing without a valid span, and no `tracestate` when
+  empty. A service round trip (extract, no-op span, inject) keeps the trace.
+- P3.4: `otel.Baggage` (never changes; `parse`, `get`, `member`, `set` with
+  properties, `delete`, `len`, `members`, `str`), `BaggageMember`,
+  `BaggageProperty{key, value ?string}`; keys are HTTP tokens; values are any
+  text, percent-encoded out (every non-baggage octet, and `%`) and decoded in;
+  at most 64 entries and 8,192 bytes, else the header is dropped; a repeated
+  key keeps its last value; errors never quote values. `context_with_baggage`,
+  `baggage_from_context` (key cell value 2). `BaggagePropagator`.
+- P3.5: `composite(...)` (fields deduplicated), `default_propagator()`
+  (tracecontext + baggage), `from_env()`: `OTEL_PROPAGATORS`, `none` for none;
+  an unknown name (`b3`, `jaeger`) is skipped with a stderr warning, as the plan
+  and the specification say. That differs from the samplers, limits and
+  resource, where a bad variable is an error; the user may want one rule.
+- Seven mutations (each a spec rule: version-00 length, `ff`, tracestate
+  dropping the trace, `%` unencoded, composite chaining, flag masking,
+  duplicate tracestate keys) each fail the tests; `-prod` passes.
+
 ### P4. Hashed refs (`five07.otel.ref`)
 
 - **P4.1** `ref.Value` sum type and conversion from `json2.Any` (Q5).

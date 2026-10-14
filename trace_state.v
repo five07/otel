@@ -18,6 +18,43 @@ pub struct TraceState {
 	members []TraceStateMember
 }
 
+// TraceState.parse reads a `tracestate` header: `key=value` entries joined by
+// commas, with optional spaces and tabs around them; empty entries are skipped.
+// A key or value outside the W3C grammar, a key given twice, or more than 32
+// entries is an error, and the caller drops the whole header.
+pub fn TraceState.parse(header string) !TraceState {
+	mut members := []TraceStateMember{}
+	for raw in header.split(',') {
+		entry := raw.trim(' \t')
+		if entry == '' {
+			continue
+		}
+		eq := entry.index_u8(`=`)
+		if eq < 0 {
+			return error('a tracestate entry is `key=value`')
+		}
+		key := entry[..eq]
+		value := entry[eq + 1..]
+		check_trace_state_key(key)!
+		check_trace_state_value(value)!
+		for m in members {
+			if m.key == key {
+				return error('a tracestate key appears twice')
+			}
+		}
+		members << TraceStateMember{
+			key:   key
+			value: value
+		}
+		if members.len > max_trace_state_members {
+			return error('a tracestate has at most ${max_trace_state_members} entries')
+		}
+	}
+	return TraceState{
+		members: members
+	}
+}
+
 // get returns the value of `key`, or none.
 pub fn (ts TraceState) get(key string) ?string {
 	for m in ts.members {
