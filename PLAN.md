@@ -34,7 +34,8 @@ input and find every span that touched it.
   the way. Don't cite this file or its Q numbers from code, comments or docs: it is
   deleted before release.
 - **Blocks.** Each phase is cut into blocks of about 30 minutes (`P1.3`). Do one
-  block, run `v fmt -w`, `v vet` and `v test` on what it touched, report, and stop.
+  block, run `v fmt -w`, `v vet -W` and `v -nocache test` on what it touched (see
+  P2.4 for why `-nocache`), report, and stop.
   If a block turns out bigger, split it here before going on.
 - **V:** the same V master as vgraph. Generics across modules and comptime are
   where compiler bugs have been; keep to plain structs, interfaces and sum types,
@@ -191,7 +192,9 @@ here doesn't drift from it. Keep it short and current.
   `Span.end()`, `set_attribute`, `set_status`, `add_event`, `record_error`, span
   kinds server, client and internal;
 - a way to start a span with an explicit start time (statement spans start where
-  the statement did);
+  the statement did); such a time has the wall clock's resolution (a
+  microsecond on macOS), so it can sit up to that much before its parent's
+  start (P2.7);
 - `otel.span_from_context` and `otel.context_with_span` (Q1);
 - `propagation.TraceContext.extract(headers) context.Context` from a map or a
   getter fn, since vgraph's `HttpRequest` has no headers and the app reads them
@@ -352,23 +355,166 @@ can be done any time after it.
 
 - **P2.1** Id generator (Q7): seeded from `crypto.rand`, safe across threads;
   a deterministic one for tests.
+  *Done* (`sdk/trace/id_generator.v`, tests). `IdGenerator` interface
+  (`new_trace_id`, `new_span_id`, any thread, never all zero).
+  `RandomIdGenerator.new() !`: xoroshiro128++ (128-bit state, so a full trace id
+  isn't drawn from 64 bits of state) seeded once from `crypto.rand`, behind a
+  `shared` lock; `RandomIdGenerator.with_seed([4]u32)` repeats its ids.
+  `SequentialIdGenerator` counts trace and span ids from 1, so tests (and the
+  OTLP golden files, P5.2) know their ids. Tested: 1,000 ids unique and valid, 8
+  threads × 2,000 span ids unique, seeds repeat, big-endian byte order; also
+  under `-prod`. macOS `sed` lacks GNU's `0,/re/`: mutation checks use Python.
 - **P2.2** `Resource` in `sdk.resource`: attributes, merge,
   `telemetry.sdk.name/language/version`, `service.name` from `OTEL_SERVICE_NAME`,
   `OTEL_RESOURCE_ATTRIBUTES` parsing; tests.
+  *Done* (`sdk/resource/resource.v`, tests; `otel.version`; first `semconv`
+  constants). `Resource.new(attrs, schema_url)` (last value of a key wins, empty
+  keys dropped, sorted by key), `attributes()` (a copy), `get`, `merge` (the
+  updating resource wins; schema URLs must agree or one be empty, else an error).
+  `sdk()`: `telemetry.sdk.name` `five07.otel` (the spec asks an SDK that isn't
+  the project's to name itself), `.language` `v`, `.version` `otel.version`,
+  which a test keeps equal to `v.mod`'s (the user's call: two values and the
+  test, which CI runs as its first check, right after building V). `from_env() !`: `OTEL_RESOURCE_ATTRIBUTES`
+  (percent-decoded, `+` kept), then `OTEL_SERVICE_NAME` over its `service.name`;
+  a malformed variable is an error and none of it is used. `default() !` = SDK
+  attributes + `unknown_service:<executable>` + the environment;
+  `default_without_env()` for an app that reports the error and goes on. Order:
+  SDK < environment < the app's own (merged last). Errors name the entry, never
+  its value.
 - **P2.3** `RecordingSpan`: holds name, kind, context, parent, times (unix ns),
   attributes, events, links, status; setters guarded by a mutex and ignored after
   `end()`; attribute and event limits (128 each, as the spec defaults) with
   dropped counts.
+  *Done* (`sdk/trace/span.v`, `span_test.v`; `exception.*` in `semconv`). Also
+  took P2.7's status rules and `record_error`, since the span must implement all
+  of `otel.Span`.
+  - `RecordingSpan` keeps its changing data in `shared SpanState`; every method
+    takes the lock and does nothing once ended. `end` runs once and hands a
+    `ReadOnlySpan` (a copy that never changes) to the `on_end` callback, which
+    P2.4's tracer points at the processors.
+  - `ReadOnlySpan`: name, span context, parent, kind, start and end unix ns,
+    attributes, events, links, their dropped counts, status, scope, resource.
+    `Event` and `Link` (the SDK's, with dropped counts); `InstrumentationScope`.
+  - `SpanLimits` (attributes, events, links 128; per event and per link 128).
+    A key already set is replaced, a new key past the limit counted; empty keys
+    are dropped uncounted; a link to an invalid context is ignored.
+  - Status: `unset` ignored, `ok` final, a description only with `error`.
+    `record_error`: an `exception` event with `exception.type`
+    (`err.type_name()`), the message only with `with_message`; status untouched.
+  - Times: given start or end used as is; otherwise the end is the start plus
+    the monotonic clock's elapsed time (`time.sys_mono_now`), as Go does.
+    macOS's wall clock has microsecond resolution.
+  - Not yet: the `OTEL_SPAN_*_LIMIT` environment variables (P2.4, with the
+    provider's settings), and the attribute value length limit (unlimited by
+    default in the spec; later if asked).
 - **P2.4** `TracerProvider` and `Tracer`: `start` picks the parent from the context
   (or a new root), asks the sampler, makes a recording or a non-recording span;
-  instrumentation scope (name, version) on each span.
+  instrumentation scope (name, version) on each span; span limits from
+  `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT`, `OTEL_SPAN_EVENT_COUNT_LIMIT`,
+  `OTEL_SPAN_LINK_COUNT_LIMIT`, `OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT`,
+  `OTEL_LINK_ATTRIBUTE_COUNT_LIMIT`.
+  *Done* (`sdk/trace/provider.v`, `sampler.v`, `processor.v`, `provider_test.v`).
+  - `TracerProvider.new(ProviderOptions) !`: resource (default
+    `resource.default()`), sampler (default `AlwaysOnSampler` until P2.5 sets
+    ParentBased), id generator (default `RandomIdGenerator`), processors,
+    limits (default from the environment). Fails on a malformed environment, as
+    `resource.default()` does, rather than warn and go on.
+  - `Tracer.start`: the parent from the context unless `new_root`; a child keeps
+    its parent's trace id and flags; the sampler's decision sets the sampled bit,
+    its attributes join the span's, its trace state is the span's. `drop` gives a
+    `NoopSpan` with real ids (the trace still propagates) and no processor calls;
+    `record_only` records without the sampled bit. Processors' `on_start` see
+    each recording span; `end` hands it to every `on_end`.
+  - `Sampler` interface, `SamplingParameters` (the parent's span context, not a
+    `context.Context`), `SamplingResult`, `SamplingDecision`; only
+    `AlwaysOnSampler` so far. `SpanProcessor` interface (`on_start`, `on_end`,
+    `force_flush !`, `shutdown !`), implemented in P2.6.
+  - Limits from `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT` (else
+    `OTEL_ATTRIBUTE_COUNT_LIMIT`) and the four others; a value that isn't a whole
+    number from 0 is an error naming the variable.
+  - Tested in-module (ids from `SequentialIdGenerator`), under `-prod`, and from
+    another project as an app wiring the SDK into a library that takes
+    `otel.TracerProvider`. Three mutations (child gets a new trace, drop records,
+    sampled bit ignored) fail the tests.
+  - **V bug: `v test` with the module cache.** Testing the whole repository (or
+    `v test sdk`) hangs every time: after `resource`'s own tests run in a
+    session, a later `trace` test spins forever in `sync.RwMutex.lazy_init`, on
+    an `inited` value nothing writes, as if built against another layout of the
+    struct; with `VJOBS=4` a test fails instead. Each directory alone passes, and
+    so does everything with `-nocache` (3 s, faster than with the cache). A
+    small two-module copy of the pattern did not hang, so there is no
+    `regressions/` program yet; the repro is `v test sdk` at this commit. Worked
+    around: `v -nocache test` in CI, the PR checklist and the README. Report it
+    upstream with the `v run` one (P0.2).
 - **P2.5** Samplers (Q7): AlwaysOn, AlwaysOff, TraceIdRatioBased, ParentBased;
   env vars; tests with the decisions carried to children.
+  *Done* (`sdk/trace/sampler.v`, `sampler_test.v`; provider default now
+  `sampler_from_env()`).
+  - `always_on_sampler()`, `always_off_sampler()`, `trace_id_ratio_based(r)`,
+    `parent_based(root, ParentBasedOptions)` (the four delegates default to on
+    for a sampled parent, off for an unsampled one). Every sampler passes the
+    parent's trace state on, kept or dropped.
+  - The ratio test is Go's: the trace id's last 8 bytes, big-endian, shifted
+    right one, below `ratio × 2⁶³`, so V and Go services keep the same traces.
+    As in Go, a ratio of 1 or more is `AlwaysOnSampler`, below 0 is 0, and the
+    descriptions match Go's (`TraceIDRatioBased{0.25}`, `ParentBased{root:…,
+    remoteParentSampled:…,…}`; whole ratios print without `.0`).
+  - `OTEL_TRACES_SAMPLER`: `always_on`, `always_off`, `traceidratio`, and each
+    with `parentbased_`; unset is `parentbased_always_on`. `OTEL_TRACES_SAMPLER_ARG`
+    is the ratio (1 if unset). An unknown name (`jaeger_remote`, `xray`) or a
+    ratio outside 0 to 1 is an error, as with the other variables.
+  - Tested: the byte boundaries of the ratio test, its ends, ~25% and ~50% of
+    20,000 seeded ids with every 0.25-kept trace kept at 0.5, each parent case,
+    descriptions, the environment, and the default provider dropping the
+    children of an unsampled remote parent. Four mutations fail the tests; the
+    remote/local swap needed its own test, since the defaults treat both alike.
 - **P2.6** `SpanProcessor` interface (`on_start`, `on_end`, `force_flush`,
   `shutdown`), `SimpleSpanProcessor`, an in-memory exporter for tests;
   `provider.shutdown()` and `force_flush()` reach every processor.
-- **P2.7** `record_error` (Q8), `add_event`, links; tests of parenting across three
-  levels, status rules (ok can't go back to unset or error), end times.
+  *Done* (`sdk/trace/exporter.v`, `simple_processor.v`, provider changes, tests).
+  - `SpanExporter` (`export([]ReadOnlySpan) !`, `shutdown !`) lives here, as in
+    Go, since processors need it; P5.1 implements stdout against it.
+    `InMemoryExporter` (`spans()`, `reset()`, refuses exports after `shutdown`),
+    public so an app's own tests can read back its spans.
+  - `SimpleSpanProcessor.new(exporter, on_error: …)`: exports each sampled span
+    as it ends, in the ending thread, under a lock so exports never overlap;
+    unsampled (`record_only`) spans are skipped; after shutdown, nothing.
+    `on_end` can't return an error, and there are no globals for Go's error
+    handler, so errors go to `on_error`, by default one stderr line.
+  - Provider `force_flush() !` and `shutdown() !` reach every processor in
+    order; errors are joined with `; `. `shutdown` runs once, later calls do
+    nothing; after it, tracers start spans that record nothing but keep valid
+    ids, and a span ended after it isn't exported.
+  - Tests: export order, unsampled and dropped spans skipped, `on_error`,
+    shutdown once (counted at the provider, since the simple processor is
+    idempotent on its own), late spans, flush errors, 8 threads × 250 spans all
+    exported with distinct ids; `-prod` too. Three mutations fail the tests.
+- **P2.7** Tests through the provider: parenting across three levels, sampled
+  and not, ids and parents as exported, end times. (`record_error`, events,
+  links and the status rules were done with P2.3.)
+  *Done* (`sdk/trace/trace_test.v`, and a fix in `span.v` / `provider.v`). The
+  SDK wired as an app wires it (parent-based sampler, simple processor,
+  in-memory exporter, sequential ids): request → resolver → statement with ids,
+  parents, kinds, scope and resource as exported; siblings; a sampled remote
+  parent continuing its trace (the root sampler not asked); an unsampled one
+  followed, nothing exported, but every level carrying the trace id and state
+  for outgoing calls; a 0.5 ratio keeping ~half of 200 traces, each whole; a
+  no-op library in the middle (the statement's parent is the request).
+  - **Bug found and fixed:** a child could end after its parent in the export.
+    Starts came from the wall clock (microseconds on macOS) and ends added the
+    monotonic elapsed time, so a child starting just past a microsecond edge
+    ended up to 1µs late. Now, as Java's SDK does, a trace's first span in the
+    process takes an `Anchor` (one reading of both clocks) and its local
+    children share it; every time is `anchor wall + monotonic elapsed`, one
+    nanosecond timeline per trace, drift bounded by the trace's length. Events
+    use it too. Without sharing, the nesting test fails 15 of 15 runs; with it,
+    40 of 40 pass.
+  - Times given explicitly (`start:`, `end:`, an event's `timestamp`) are used
+    as given, as in Go, so they carry the wall clock's resolution: one taken
+    with `time.now()` in the same microsecond as its parent's start can land up
+    to 1µs before it. vgraph's statement spans should know (section 3).
+  - Every SDK test file run 10× (40× for this one) without a failure; a
+    mutation (spans exported without their parent) fails it.
 
 ### P3. Propagation (`five07.otel.propagation`)
 
@@ -401,8 +547,8 @@ can be done any time after it.
 
 ### P5. Exporters
 
-- **P5.1** `SpanExporter` interface (`export([]ReadOnlySpan) !`, `shutdown`); the
-  stdout exporter, one JSON line per span; a pretty option.
+- **P5.1** The stdout exporter, one JSON line per span; a pretty option. (The
+  `SpanExporter` interface came with P2.6, in `sdk/trace`.)
 - **P5.2** OTLP JSON encoding: `resourceSpans` → `scopeSpans` → `spans`, ids as
   hex, times as strings of unix nanoseconds, `intValue` as a string, attributes as
   `{key, value: {stringValue | ...}}`, events, links, status, kind as its number.

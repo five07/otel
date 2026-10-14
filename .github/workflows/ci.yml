@@ -25,6 +25,9 @@ jobs:
           git -C vlang checkout "$V_COMMIT"
           make -C vlang -j4
           sudo ./vlang/v symlink
+      - name: Check that otel.version is v.mod's version
+        # first, so a release with a half-bumped version fails fast
+        run: v -nocache test otel/otel_test.v
       - name: Install otel as five07.otel, for the SDK, the examples and the snippets
         run: v run otel/examples/setup.vsh
       - name: Check formatting
@@ -36,4 +39,6 @@ jobs:
         # the library modules only (`.vdocignore`); fails on a doc that can't build
         run: v doc -f html -m -o "$RUNNER_TEMP/api" -no-timestamp otel
       - name: Test
-        run: v test otel
+        # -nocache: on V master, one `v test` session that runs a module's own
+        # tests and then tests importing that module can hang or fail
+        run: v -nocache test otel

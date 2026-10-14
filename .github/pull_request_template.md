@@ -6,7 +6,7 @@
 
 ## Checklist
 
-- [ ] Tests: new behaviour has a test, and `v test .` passes (after
+- [ ] Tests: new behaviour has a test, and `v -nocache test .` passes (after
       `v run examples/setup.vsh` once per checkout); for a change to what is
       exported, the OTLP JSON tests pass against their golden files.
 - [ ] Telemetry: nothing reaches a span, event or attribute that the caller
