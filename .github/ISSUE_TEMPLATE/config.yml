@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: The guides
+    url: https://github.com/five07/otel/tree/main/docs
+    about: How to set up a provider, record spans, configure export and use refs.
+  - name: The OpenTelemetry specification
+    url: https://opentelemetry.io/docs/specs/otel/
+    about: What the standard says a span, a sampler or an exporter must do.
+  - name: A bug in V itself
+    url: https://github.com/vlang/v/issues
+    about: The compiler or a vlib module, outside otel.

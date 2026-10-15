@@ -1,0 +1,33 @@
+// A pointer that implements an interface can't go into a struct field of the
+// optional interface type: `cannot assign a pointer to option struct field`.
+// The same value as a `@[params]` argument compiles, and so does the field
+// without `?`. It should compile and print `provider`.
+// Run: `v run pointer_to_option_interface_field.vv` in this folder.
+// Worked around where a provider goes into options: the docs convert it first,
+// `otel.TracerProvider(provider)`.
+module main
+
+interface TracerProvider {
+	name() string
+}
+
+@[heap]
+struct SdkProvider {}
+
+fn (p &SdkProvider) name() string {
+	return 'provider'
+}
+
+struct Options {
+	tracer_provider ?TracerProvider
+}
+
+fn main() {
+	provider := &SdkProvider{}
+	opts := Options{
+		tracer_provider: provider
+	}
+	if p := opts.tracer_provider {
+		println(p.name())
+	}
+}

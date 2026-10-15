@@ -1,0 +1,237 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "blog"
+            }
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "1.2.0"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "five07.vgraph",
+            "version": "0.1.0"
+          },
+          "spans": [
+            {
+              "traceId": "00000000000000000000000000000001",
+              "spanId": "0000000000000001",
+              "traceState": "congo=t61rcWkgMzE",
+              "parentSpanId": "00f067aa0ba902b7",
+              "flags": 769,
+              "name": "query Posts",
+              "kind": 2,
+              "startTimeUnixNano": "1700000000000000000",
+              "endTimeUnixNano": "1700000000005000000",
+              "attributes": [
+                {
+                  "key": "graphql.operation.type",
+                  "value": {
+                    "stringValue": "query"
+                  }
+                },
+                {
+                  "key": "cached",
+                  "value": {
+                    "boolValue": false
+                  }
+                },
+                {
+                  "key": "big",
+                  "value": {
+                    "intValue": "9007199254740993"
+                  }
+                },
+                {
+                  "key": "ratio",
+                  "value": {
+                    "doubleValue": 0.25
+                  }
+                },
+                {
+                  "key": "nan",
+                  "value": {
+                    "doubleValue": "NaN"
+                  }
+                },
+                {
+                  "key": "tags",
+                  "value": {
+                    "arrayValue": {
+                      "values": [
+                        {
+                          "stringValue": "a"
+                        },
+                        {
+                          "stringValue": "b"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "key": "flags",
+                  "value": {
+                    "arrayValue": {
+                      "values": [
+                        {
+                          "boolValue": true
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "key": "ids",
+                  "value": {
+                    "arrayValue": {
+                      "values": [
+                        {
+                          "intValue": "1"
+                        },
+                        {
+                          "intValue": "-2"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "key": "ws",
+                  "value": {
+                    "arrayValue": {
+                      "values": [
+                        {
+                          "doubleValue": 1.5
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "key": "none",
+                  "value": {
+                    "arrayValue": {}
+                  }
+                }
+              ],
+              "status": {
+                "message": "timed out",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "00000000000000000000000000000001",
+              "spanId": "0000000000000002",
+              "parentSpanId": "0000000000000001",
+              "flags": 257,
+              "name": "SELECT users",
+              "kind": 3,
+              "startTimeUnixNano": "1700000000001000000",
+              "endTimeUnixNano": "1700000000003000000",
+              "droppedAttributesCount": 2,
+              "events": [
+                {
+                  "timeUnixNano": "1700000000002000000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "QueryError"
+                      }
+                    }
+                  ],
+                  "droppedAttributesCount": 1
+                }
+              ],
+              "droppedEventsCount": 3,
+              "links": [
+                {
+                  "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+                  "spanId": "00f067aa0ba902b7",
+                  "traceState": "congo=t61rcWkgMzE",
+                  "attributes": [
+                    {
+                      "key": "n",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    }
+                  ],
+                  "flags": 769
+                }
+              ],
+              "droppedLinksCount": 4,
+              "status": {
+                "code": 1
+              }
+            }
+          ]
+        },
+        {
+          "scope": {
+            "name": "app"
+          },
+          "spans": [
+            {
+              "traceId": "00000000000000000000000000000002",
+              "spanId": "0000000000000003",
+              "flags": 257,
+              "name": "job",
+              "kind": 5,
+              "startTimeUnixNano": "1700000000000000000",
+              "endTimeUnixNano": "1700000000000000001",
+              "status": {}
+            }
+          ],
+          "schemaUrl": "https://opentelemetry.io/schemas/1.26.0"
+        }
+      ],
+      "schemaUrl": "https://opentelemetry.io/schemas/1.26.0"
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "worker"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "app"
+          },
+          "spans": [
+            {
+              "traceId": "00000000000000000000000000000002",
+              "spanId": "0000000000000004",
+              "flags": 257,
+              "name": "other",
+              "kind": 4,
+              "startTimeUnixNano": "1700000000000000000",
+              "endTimeUnixNano": "1700000000000000002",
+              "status": {}
+            }
+          ],
+          "schemaUrl": "https://opentelemetry.io/schemas/1.26.0"
+        }
+      ]
+    }
+  ]
+}

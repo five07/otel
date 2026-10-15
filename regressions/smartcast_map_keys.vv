@@ -1,0 +1,37 @@
+// In a `match` on a recursive sum type, the `map[string]Value` branch's
+// `v.keys()` doesn't give a `[]string`: sorting it fails with `cannot call a
+// method that does not have a body` (in otel's code, iterating it gave `for in:
+// cannot index array`). It should compile and print `['a', 'b']`.
+// Run: `v run smartcast_map_keys.vv` in this folder.
+// Worked around in `ref/jcs.v` (`write_value`): the keys are collected with
+// `for k, _ in v`.
+module main
+
+type Value = string | []Value | map[string]Value
+
+fn keys_of(v Value) []string {
+	match v {
+		string {
+			return []
+		}
+		[]Value {
+			return []
+		}
+		map[string]Value {
+			mut keys := v.keys()
+			keys.sort()
+			mut out := []string{}
+			for k in keys {
+				out << k
+			}
+			return out
+		}
+	}
+}
+
+fn main() {
+	println(keys_of(Value({
+		'b': Value('x')
+		'a': Value('y')
+	})))
+}

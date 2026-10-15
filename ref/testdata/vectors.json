@@ -1,0 +1,755 @@
+{
+ "cases": [
+  {
+   "canonical": "\"alice@example.com\"",
+   "input": "alice@example.com",
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:6fe27db8c6e7931b"
+  },
+  {
+   "canonical": "\"alice@example.com\"",
+   "input": "alice@example.com",
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:6fe27db8c6e7931b32acaa3a54136e7f"
+  },
+  {
+   "canonical": "\"alice@example.com\"",
+   "input": "alice@example.com",
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:6fe27db8c6e7931b32acaa3a54136e7ff3f4a0bd6612d5681738fce8bfebd31a"
+  },
+  {
+   "canonical": "\"alice@example.com\"",
+   "input": "alice@example.com",
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:b595101af3afe933"
+  },
+  {
+   "canonical": "\"alice@example.com\"",
+   "input": "alice@example.com",
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:b595101af3afe93343acb7181bc15935"
+  },
+  {
+   "canonical": "\"alice@example.com\"",
+   "input": "alice@example.com",
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:b595101af3afe93343acb7181bc1593573485685c06d714e9a9398b0207f8952"
+  },
+  {
+   "canonical": "\"ACCT-0042\"",
+   "input": "ACCT-0042",
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:493c026b010e1f8a"
+  },
+  {
+   "canonical": "\"ACCT-0042\"",
+   "input": "ACCT-0042",
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:493c026b010e1f8abec5042f679f8ef1"
+  },
+  {
+   "canonical": "\"ACCT-0042\"",
+   "input": "ACCT-0042",
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:493c026b010e1f8abec5042f679f8ef1a61af8b386c0af69d5f17264342dc8c9"
+  },
+  {
+   "canonical": "\"ACCT-0042\"",
+   "input": "ACCT-0042",
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:df35198de130197f"
+  },
+  {
+   "canonical": "\"ACCT-0042\"",
+   "input": "ACCT-0042",
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:df35198de130197fe5dc21c9a7fe36e9"
+  },
+  {
+   "canonical": "\"ACCT-0042\"",
+   "input": "ACCT-0042",
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:df35198de130197fe5dc21c9a7fe36e951340a8cd0c72931df9f77c446969b10"
+  },
+  {
+   "canonical": "\"\"",
+   "input": "",
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:365fed66a549fc35"
+  },
+  {
+   "canonical": "\"\"",
+   "input": "",
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:365fed66a549fc35b86b7481bbd88d12"
+  },
+  {
+   "canonical": "\"\"",
+   "input": "",
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:365fed66a549fc35b86b7481bbd88d1271a751b02143d45cf7f4ce9bdf7aa51b"
+  },
+  {
+   "canonical": "\"\"",
+   "input": "",
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:12ae32cb1ec02d01"
+  },
+  {
+   "canonical": "\"\"",
+   "input": "",
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:12ae32cb1ec02d01eda3581b127c1fee"
+  },
+  {
+   "canonical": "\"\"",
+   "input": "",
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126"
+  },
+  {
+   "canonical": "42",
+   "input": 42,
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:7df989924b2ebf88"
+  },
+  {
+   "canonical": "42",
+   "input": 42,
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:7df989924b2ebf8832c80802d1213a8a"
+  },
+  {
+   "canonical": "42",
+   "input": 42,
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:7df989924b2ebf8832c80802d1213a8a21a062a23877f0718effe501daee1703"
+  },
+  {
+   "canonical": "42",
+   "input": 42,
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:73475cb40a568e8d"
+  },
+  {
+   "canonical": "42",
+   "input": 42,
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:73475cb40a568e8da8a045ced110137e"
+  },
+  {
+   "canonical": "42",
+   "input": 42,
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"
+  },
+  {
+   "canonical": "-7",
+   "input": -7,
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:54a07f6735f4f525"
+  },
+  {
+   "canonical": "-7",
+   "input": -7,
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:54a07f6735f4f5255796d46fb6b48c4c"
+  },
+  {
+   "canonical": "-7",
+   "input": -7,
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:54a07f6735f4f5255796d46fb6b48c4c4352513b0c9dc65de3dd0017471313df"
+  },
+  {
+   "canonical": "-7",
+   "input": -7,
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:a770d3270c9dcded"
+  },
+  {
+   "canonical": "-7",
+   "input": -7,
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:a770d3270c9dcdedf12ed9fd70444f7c"
+  },
+  {
+   "canonical": "-7",
+   "input": -7,
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:a770d3270c9dcdedf12ed9fd70444f7c8a95c26cae3cae9bd867499090a2f14b"
+  },
+  {
+   "canonical": "0",
+   "input": 0,
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:3a8b171143bc3fe5"
+  },
+  {
+   "canonical": "0",
+   "input": 0,
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:3a8b171143bc3fe5972827cf3a413e96"
+  },
+  {
+   "canonical": "0",
+   "input": 0,
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:3a8b171143bc3fe5972827cf3a413e96e1b4573ae308ee4e2ee652100511049f"
+  },
+  {
+   "canonical": "0",
+   "input": 0,
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:5feceb66ffc86f38"
+  },
+  {
+   "canonical": "0",
+   "input": 0,
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:5feceb66ffc86f38d952786c6d696c79"
+  },
+  {
+   "canonical": "0",
+   "input": 0,
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+  },
+  {
+   "canonical": "0.5",
+   "input": 0.5,
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:52a0441e0063561e"
+  },
+  {
+   "canonical": "0.5",
+   "input": 0.5,
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:52a0441e0063561e33bb3d0b4ec09bf9"
+  },
+  {
+   "canonical": "0.5",
+   "input": 0.5,
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:52a0441e0063561e33bb3d0b4ec09bf9419acb0598a32d0a762fd2e8da8391e8"
+  },
+  {
+   "canonical": "0.5",
+   "input": 0.5,
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:d2cbad71ff333de6"
+  },
+  {
+   "canonical": "0.5",
+   "input": 0.5,
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:d2cbad71ff333de67d07ec676e352ab7"
+  },
+  {
+   "canonical": "0.5",
+   "input": 0.5,
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:d2cbad71ff333de67d07ec676e352ab7f38248eb69c942950157220607c55e84"
+  },
+  {
+   "canonical": "1.25",
+   "input": 1.25,
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:4d94bbff62880a03"
+  },
+  {
+   "canonical": "1.25",
+   "input": 1.25,
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:4d94bbff62880a039d2869e423b38b50"
+  },
+  {
+   "canonical": "1.25",
+   "input": 1.25,
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:4d94bbff62880a039d2869e423b38b5005126c7ca2b5cea183e0e92f7524e3a2"
+  },
+  {
+   "canonical": "1.25",
+   "input": 1.25,
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:004a9e0878ff83e6"
+  },
+  {
+   "canonical": "1.25",
+   "input": 1.25,
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:004a9e0878ff83e6b91f50d50dad439d"
+  },
+  {
+   "canonical": "1.25",
+   "input": 1.25,
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:004a9e0878ff83e6b91f50d50dad439d2065c6cbb0d20f1f328b2fd75e085d6a"
+  },
+  {
+   "canonical": "true",
+   "input": true,
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:4476aeee13a643ca"
+  },
+  {
+   "canonical": "true",
+   "input": true,
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:4476aeee13a643ca50916f9b6ef8acc9"
+  },
+  {
+   "canonical": "true",
+   "input": true,
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:4476aeee13a643ca50916f9b6ef8acc90eee4ae04c4f56720ccc2d67eeacd8f0"
+  },
+  {
+   "canonical": "true",
+   "input": true,
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:b5bea41b6c623f7c"
+  },
+  {
+   "canonical": "true",
+   "input": true,
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:b5bea41b6c623f7c09f1bf24dcae58eb"
+  },
+  {
+   "canonical": "true",
+   "input": true,
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+  },
+  {
+   "canonical": "false",
+   "input": false,
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:a290a0a8027b071c"
+  },
+  {
+   "canonical": "false",
+   "input": false,
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:a290a0a8027b071c7aa39d6678a6a5cd"
+  },
+  {
+   "canonical": "false",
+   "input": false,
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:a290a0a8027b071c7aa39d6678a6a5cd95bba2b8bb436c63092e4ff1bea5565f"
+  },
+  {
+   "canonical": "false",
+   "input": false,
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:fcbcf165908dd18a"
+  },
+  {
+   "canonical": "false",
+   "input": false,
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:fcbcf165908dd18a9e49f7ff27810176"
+  },
+  {
+   "canonical": "false",
+   "input": false,
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"
+  },
+  {
+   "canonical": "null",
+   "input": null,
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:884ed757342dea17"
+  },
+  {
+   "canonical": "null",
+   "input": null,
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:884ed757342dea179553ab752b618ea3"
+  },
+  {
+   "canonical": "null",
+   "input": null,
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:884ed757342dea179553ab752b618ea3727be91a8b5bc775d5b51aa17ed291c0"
+  },
+  {
+   "canonical": "null",
+   "input": null,
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:74234e98afe7498f"
+  },
+  {
+   "canonical": "null",
+   "input": null,
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:74234e98afe7498fb5daf1f36ac2d78a"
+  },
+  {
+   "canonical": "null",
+   "input": null,
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+  },
+  {
+   "canonical": "[1,\"two\",null]",
+   "input": [
+    1,
+    "two",
+    null
+   ],
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:da26feca16ac160e"
+  },
+  {
+   "canonical": "[1,\"two\",null]",
+   "input": [
+    1,
+    "two",
+    null
+   ],
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:da26feca16ac160e0a15422ded07d038"
+  },
+  {
+   "canonical": "[1,\"two\",null]",
+   "input": [
+    1,
+    "two",
+    null
+   ],
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:da26feca16ac160e0a15422ded07d038c4b728fc34eb017f808869c10689083c"
+  },
+  {
+   "canonical": "[1,\"two\",null]",
+   "input": [
+    1,
+    "two",
+    null
+   ],
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:597be421a7a1692c"
+  },
+  {
+   "canonical": "[1,\"two\",null]",
+   "input": [
+    1,
+    "two",
+    null
+   ],
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:597be421a7a1692cdedfeae56567a7f6"
+  },
+  {
+   "canonical": "[1,\"two\",null]",
+   "input": [
+    1,
+    "two",
+    null
+   ],
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:597be421a7a1692cdedfeae56567a7f6f64f20022eacae23a3918aeaa29e5904"
+  },
+  {
+   "canonical": "{\"amount\":120,\"currency\":\"EUR\",\"to\":\"alice@example.com\"}",
+   "input": {
+    "amount": 120,
+    "currency": "EUR",
+    "to": "alice@example.com"
+   },
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:dfde32429e5b3a6d"
+  },
+  {
+   "canonical": "{\"amount\":120,\"currency\":\"EUR\",\"to\":\"alice@example.com\"}",
+   "input": {
+    "amount": 120,
+    "currency": "EUR",
+    "to": "alice@example.com"
+   },
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:dfde32429e5b3a6d5a3fba19024946e1"
+  },
+  {
+   "canonical": "{\"amount\":120,\"currency\":\"EUR\",\"to\":\"alice@example.com\"}",
+   "input": {
+    "amount": 120,
+    "currency": "EUR",
+    "to": "alice@example.com"
+   },
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:dfde32429e5b3a6d5a3fba19024946e1127a92e05278e6ef1259f0a08201e0b4"
+  },
+  {
+   "canonical": "{\"amount\":120,\"currency\":\"EUR\",\"to\":\"alice@example.com\"}",
+   "input": {
+    "amount": 120,
+    "currency": "EUR",
+    "to": "alice@example.com"
+   },
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:42d57c29b009bdd5"
+  },
+  {
+   "canonical": "{\"amount\":120,\"currency\":\"EUR\",\"to\":\"alice@example.com\"}",
+   "input": {
+    "amount": 120,
+    "currency": "EUR",
+    "to": "alice@example.com"
+   },
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:42d57c29b009bdd5f03a95614de8621d"
+  },
+  {
+   "canonical": "{\"amount\":120,\"currency\":\"EUR\",\"to\":\"alice@example.com\"}",
+   "input": {
+    "amount": 120,
+    "currency": "EUR",
+    "to": "alice@example.com"
+   },
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:42d57c29b009bdd5f03a95614de8621d0be1f75190787b18232bfd6b5df4275b"
+  },
+  {
+   "canonical": "{\"a\":{\"y\":null,\"z\":true},\"b\":[1,{\"c\":3,\"d\":4}]}",
+   "input": {
+    "a": {
+     "y": null,
+     "z": true
+    },
+    "b": [
+     1,
+     {
+      "c": 3,
+      "d": 4
+     }
+    ]
+   },
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:14c568b9f2a25fb2"
+  },
+  {
+   "canonical": "{\"a\":{\"y\":null,\"z\":true},\"b\":[1,{\"c\":3,\"d\":4}]}",
+   "input": {
+    "a": {
+     "y": null,
+     "z": true
+    },
+    "b": [
+     1,
+     {
+      "c": 3,
+      "d": 4
+     }
+    ]
+   },
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:14c568b9f2a25fb26bd0d799121c052d"
+  },
+  {
+   "canonical": "{\"a\":{\"y\":null,\"z\":true},\"b\":[1,{\"c\":3,\"d\":4}]}",
+   "input": {
+    "a": {
+     "y": null,
+     "z": true
+    },
+    "b": [
+     1,
+     {
+      "c": 3,
+      "d": 4
+     }
+    ]
+   },
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:14c568b9f2a25fb26bd0d799121c052d942bd4229111461c33030c8c6d6597a2"
+  },
+  {
+   "canonical": "{\"a\":{\"y\":null,\"z\":true},\"b\":[1,{\"c\":3,\"d\":4}]}",
+   "input": {
+    "a": {
+     "y": null,
+     "z": true
+    },
+    "b": [
+     1,
+     {
+      "c": 3,
+      "d": 4
+     }
+    ]
+   },
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:ff3ba63e68450337"
+  },
+  {
+   "canonical": "{\"a\":{\"y\":null,\"z\":true},\"b\":[1,{\"c\":3,\"d\":4}]}",
+   "input": {
+    "a": {
+     "y": null,
+     "z": true
+    },
+    "b": [
+     1,
+     {
+      "c": 3,
+      "d": 4
+     }
+    ]
+   },
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:ff3ba63e68450337c9908d3b0925e2c9"
+  },
+  {
+   "canonical": "{\"a\":{\"y\":null,\"z\":true},\"b\":[1,{\"c\":3,\"d\":4}]}",
+   "input": {
+    "a": {
+     "y": null,
+     "z": true
+    },
+    "b": [
+     1,
+     {
+      "c": 3,
+      "d": 4
+     }
+    ]
+   },
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:ff3ba63e68450337c9908d3b0925e2c985880134996afbf48ad55f66f2bae55a"
+  },
+  {
+   "canonical": "\"quote \\\" backslash \\\\ tab \\t newline \\n\"",
+   "input": "quote \" backslash \\ tab \t newline \n",
+   "length": 16,
+   "mode": "hmac",
+   "ref": "hmac:eebef88a17432746"
+  },
+  {
+   "canonical": "\"quote \\\" backslash \\\\ tab \\t newline \\n\"",
+   "input": "quote \" backslash \\ tab \t newline \n",
+   "length": 32,
+   "mode": "hmac",
+   "ref": "hmac:eebef88a17432746a439c8c6259c80ea"
+  },
+  {
+   "canonical": "\"quote \\\" backslash \\\\ tab \\t newline \\n\"",
+   "input": "quote \" backslash \\ tab \t newline \n",
+   "length": 64,
+   "mode": "hmac",
+   "ref": "hmac:eebef88a17432746a439c8c6259c80ea683aacada54fca97172cb6cc50f32533"
+  },
+  {
+   "canonical": "\"quote \\\" backslash \\\\ tab \\t newline \\n\"",
+   "input": "quote \" backslash \\ tab \t newline \n",
+   "length": 16,
+   "mode": "plain",
+   "ref": "sha256:38a16e3dbcd71cb4"
+  },
+  {
+   "canonical": "\"quote \\\" backslash \\\\ tab \\t newline \\n\"",
+   "input": "quote \" backslash \\ tab \t newline \n",
+   "length": 32,
+   "mode": "plain",
+   "ref": "sha256:38a16e3dbcd71cb4bffff23d01be201c"
+  },
+  {
+   "canonical": "\"quote \\\" backslash \\\\ tab \\t newline \\n\"",
+   "input": "quote \" backslash \\ tab \t newline \n",
+   "length": 64,
+   "mode": "plain",
+   "ref": "sha256:38a16e3dbcd71cb4bffff23d01be201cf2b44ff0c423ca1833ea54359fce9a8c"
+  }
+ ],
+ "key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+}
