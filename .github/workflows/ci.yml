@@ -19,12 +19,20 @@ jobs:
         with:
           path: otel
           persist-credentials: false
+      - name: Restore V
+        id: v-cache
+        uses: actions/cache@v4
+        with:
+          path: vlang
+          key: v-${{ runner.os }}-${{ env.V_COMMIT }}
       - name: Build V
+        if: steps.v-cache.outputs.cache-hit != 'true'
         run: |
           git clone --filter=blob:none https://github.com/vlang/v vlang
           git -C vlang checkout "$V_COMMIT"
           make -C vlang -j4
-          sudo ./vlang/v symlink
+      - name: Install V
+        run: sudo ./vlang/v symlink
       - name: Check that otel.version is v.mod's version
         # first, so a release with a half-bumped version fails fast
         run: v -nocache test otel/otel_test.v
