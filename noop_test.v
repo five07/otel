@@ -104,3 +104,10 @@ fn test_span_calls_reach_an_implementation() {
 	assert calls == ['name n', 'attrs a,b', 'attrs ', 'event e 0', 'link', 'status ok ',
 		'error boom false', 'end false']
 }
+
+fn test_noop_span_records_nothing() {
+	span := noop_span()
+	assert !span.is_recording()
+	assert !span.span_context().is_valid()
+	span.end()
+}

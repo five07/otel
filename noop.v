@@ -30,6 +30,12 @@ pub fn (t NoopTracer) start(ctx context.Context, name string, opts SpanStartOpti
 	return context_with_span(ctx, span), span
 }
 
+// noop_span returns a span that records nothing, for a function that returns
+// a recording span when it is traced and this one when it isn't.
+pub fn noop_span() Span {
+	return NoopSpan{}
+}
+
 // NoopSpan records nothing. It carries a span context, so a trace that came in
 // from another service still goes out to the next one when nothing records it.
 pub struct NoopSpan {

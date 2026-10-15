@@ -62,3 +62,14 @@ fn test_attributes_compare_by_value() {
 	assert i64_attr('k', 1) != f64_attr('k', 1.0)
 	assert strings_attr('k', ['a']) == strings_attr('k', ['a'])
 }
+
+fn test_a_value_reads_as_itself() {
+	assert string_attr('k', 'books').value.str() == 'books'
+	assert int_attr('k', 3).value.str() == '3'
+	assert bool_attr('k', true).value.str() == 'true'
+	assert f64_attr('k', 0.25).value.str() == '0.25'
+	assert strings_attr('k', ['a', 'b']).value.str() == '[a, b]'
+	assert ints_attr('k', [1, -2]).value.str() == '[1, -2]'
+	v := string_attr('k', 'books').value
+	assert '${v}' == 'books'
+}

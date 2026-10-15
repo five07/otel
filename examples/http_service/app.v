@@ -5,6 +5,7 @@ import net.http
 import time
 import five07.otel
 import five07.otel.propagation
+import five07.otel.propagation.httpcarrier
 import five07.otel.semconv
 
 // App serves `GET /hello?name=…` and traces each request: a server span that
@@ -27,12 +28,7 @@ fn new_app(provider otel.TracerProvider) App {
 // handle is `net.http`'s entry point for each request.
 fn (mut app App) handle(req http.Request) http.Response {
 	// the caller's trace, if it sent one
-	carrier := propagation.GetterCarrier{
-		get_fn: fn [req] (key string) ?string {
-			return req.header.get_custom(key)
-		}
-	}
-	parent := app.propagator.extract(context.background(), carrier)
+	parent := app.propagator.extract(context.background(), httpcarrier.new(req.header))
 	path := req.url.all_before('?')
 	route := if path == '/hello' { '/hello' } else { 'unknown' }
 	ctx, span := app.tracer.start(parent, '${req.method} ${route}',

@@ -58,3 +58,19 @@ pub fn (e &InMemoryExporter) reset() {
 		e.state.spans = []
 	}
 }
+
+// span returns the first span kept with the name `name`, or none.
+pub fn (e &InMemoryExporter) span(name string) ?ReadOnlySpan {
+	return rlock e.state {
+		find_span(e.state.spans, name)
+	}
+}
+
+fn find_span(spans []ReadOnlySpan, name string) ?ReadOnlySpan {
+	for s in spans {
+		if s.name == name {
+			return s
+		}
+	}
+	return none
+}

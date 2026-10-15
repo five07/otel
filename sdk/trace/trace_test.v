@@ -96,6 +96,25 @@ fn test_spans_from_the_same_context_are_siblings() {
 	assert s['b'].parent == s['root'].span_context
 }
 
+fn test_the_helpers_tests_read_spans_with() {
+	t := setup(parent_based(always_on_sampler()), SequentialIdGenerator.new())
+	tracer := t.provider.tracer('lib')
+	ctx, root := tracer.start(context.background(), 'query users')
+	_, child := tracer.start(ctx, 'SELECT users',
+		attributes: [otel.string_attr('db.collection.name', 'users')]
+	)
+	child.end()
+	root.end()
+	parent := t.exporter.span('query users') or { panic('no span `query users`') }
+	statement := t.exporter.span('SELECT users') or { panic('no span `SELECT users`') }
+	assert t.exporter.span('nothing') == none
+	assert statement.is_child_of(parent)
+	assert !parent.is_child_of(statement)
+	assert !parent.is_child_of(parent)
+	assert statement.attribute('db.collection.name')?.str() == 'users'
+	assert statement.attribute('db.query.text') == none
+}
+
 fn test_a_sampled_remote_parent_continues_its_trace() {
 	t := setup(parent_based(always_off_sampler()), SequentialIdGenerator.new())
 	ctx := otel.context_with_span_context(context.background(), remote(true))

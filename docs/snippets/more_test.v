@@ -6,6 +6,15 @@ import five07.otel
 import five07.otel.ref
 import five07.otel.sdk.trace
 
+fn test_env_provider_follows_otel_traces_exporter() {
+	os.setenv('OTEL_TRACES_EXPORTER', 'console', true)
+	defer {
+		os.unsetenv('OTEL_TRACES_EXPORTER')
+	}
+	provider := env_provider()!
+	provider.shutdown()!
+}
+
 fn test_configured_provider_builds() {
 	provider := configured_provider()!
 	provider.shutdown()!

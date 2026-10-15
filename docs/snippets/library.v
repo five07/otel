@@ -62,3 +62,29 @@ fn fetch(key string) !string {
 	}
 	return 'blob:${key}'
 }
+
+// snippet: context_values
+// tenant_key_cell exists for its address, which is the context key of the
+// tenant: no other package can make the same key, as a string key could.
+const tenant_key_cell = u8(1)
+
+fn tenant_key() context.Key {
+	return voidptr(&tenant_key_cell)
+}
+
+// with_tenant returns `ctx` carrying `tenant`, beside its trace.
+fn with_tenant(ctx context.Context, tenant string) context.Context {
+	return context.with_value(ctx, tenant_key(), tenant)
+}
+
+// tenant_from returns the tenant `ctx` carries, or none.
+fn tenant_from(ctx context.Context) ?string {
+	if value := ctx.value(tenant_key()) {
+		if value is string {
+			return value
+		}
+	}
+	return none
+}
+
+// end snippet

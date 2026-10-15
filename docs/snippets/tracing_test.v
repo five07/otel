@@ -39,7 +39,20 @@ fn test_a_trace_goes_in_and_out() {
 	provider, _ := memory_provider()
 	ctx2, span := provider.tracer('shop').start(ctx, 'handle')
 	headers := outgoing(ctx2)
-	assert headers['traceparent'].starts_with('00-4bf92f3577b34da6a3ce929d0e0e4736-')
-	assert headers['traceparent'] != '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'
+	traceparent := headers.get_custom('traceparent')?
+	assert traceparent.starts_with('00-4bf92f3577b34da6a3ce929d0e0e4736-')
+	assert traceparent != '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'
 	span.end()
+}
+
+fn test_a_provider_goes_into_options() {
+	provider, _ := memory_provider()
+	opts := library_options(provider)
+	if p := opts.tracer_provider {
+		_, span := p.tracer('lib').start(context.background(), 'x')
+		assert span.is_recording()
+		span.end()
+	} else {
+		assert false
+	}
 }

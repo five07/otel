@@ -66,6 +66,23 @@ pub:
 	resource           resource.Resource
 }
 
+// is_child_of tells whether the span's parent is `other`: the same trace, and
+// `other`'s span id as its parent's.
+pub fn (s ReadOnlySpan) is_child_of(other ReadOnlySpan) bool {
+	return s.parent.is_valid() && s.parent.trace_id == other.span_context.trace_id
+		&& s.parent.span_id == other.span_context.span_id
+}
+
+// attribute returns the value of the attribute `key`, or none.
+pub fn (s ReadOnlySpan) attribute(key string) ?otel.Value {
+	for kv in s.attributes {
+		if kv.key == key {
+			return kv.value
+		}
+	}
+	return none
+}
+
 // Anchor ties the monotonic clock to the wall clock at one moment, the start of
 // a trace in this process. Its spans take their times from it: on one timeline
 // with the monotonic clock's precision, so a child never seems to start before

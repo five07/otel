@@ -4,6 +4,21 @@ module otel
 // string, bool, 64-bit integer or float, or a list of one of those.
 pub type Value = string | bool | i64 | f64 | []string | []bool | []i64 | []f64
 
+// str returns the value as text: `books`, `3`, `true`, and a list as `[a, b]`,
+// with strings unquoted. Tests compare attributes with it.
+pub fn (v Value) str() string {
+	return match v {
+		string { v }
+		bool { v.str() }
+		i64 { v.str() }
+		f64 { v.str() }
+		[]string { '[' + v.join(', ') + ']' }
+		[]bool { '[' + v.map(it.str()).join(', ') + ']' }
+		[]i64 { '[' + v.map(it.str()).join(', ') + ']' }
+		[]f64 { '[' + v.map(it.str()).join(', ') + ']' }
+	}
+}
+
 // KeyValue is an attribute: a key, such as `http.request.method`, and its value.
 // The helpers (`string_attr` and the others) make one with the value typed.
 pub struct KeyValue {

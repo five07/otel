@@ -40,3 +40,27 @@ pub const http_response_status_code = 'http.response.status_code'
 
 // url_path is the request's path, such as `/users/42`.
 pub const url_path = 'url.path'
+
+// db_system_name names the database system, such as `sqlite` or `postgresql`.
+pub const db_system_name = 'db.system.name'
+
+// db_collection_name is the table or collection a statement works on, such as
+// `users`.
+pub const db_collection_name = 'db.collection.name'
+
+// db_operation_name is what a statement does, such as `SELECT` or `findOne`.
+pub const db_operation_name = 'db.operation.name'
+
+// db_query_text is the statement's text, such as `SELECT * FROM users WHERE
+// id = ?`. It can hold values unless they are passed as parameters, so a
+// library records it only when asked.
+pub const db_query_text = 'db.query.text'
+
+// graphql_operation_type is the operation's type: `query`, `mutation` or
+// `subscription`. The GraphQL conventions are still in development, so this
+// name could change.
+pub const graphql_operation_type = 'graphql.operation.type'
+
+// graphql_operation_name is the operation's name in the document, such as
+// `FindUsers`. In development, as `graphql_operation_type` is.
+pub const graphql_operation_name = 'graphql.operation.name'

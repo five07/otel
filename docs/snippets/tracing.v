@@ -7,6 +7,7 @@ import net.http
 import five07.otel
 import five07.otel.exporters.otlphttp
 import five07.otel.propagation
+import five07.otel.propagation.httpcarrier
 import five07.otel.sdk.trace
 
 // snippet: setup
@@ -55,19 +56,31 @@ fn charge(tracer otel.Tracer, ctx context.Context) ! {
 // snippet: propagation
 // incoming continues the trace an incoming request carries in its headers.
 fn incoming(req http.Request) context.Context {
-	carrier := propagation.GetterCarrier{
-		get_fn: fn [req] (key string) ?string {
-			return req.header.get_custom(key)
-		}
-	}
-	return propagation.default_propagator().extract(context.background(), carrier)
+	return propagation.default_propagator().extract(context.background(), httpcarrier.new(req.header))
 }
 
 // outgoing returns the headers that carry `ctx`'s trace to the next service.
-fn outgoing(ctx context.Context) map[string]string {
-	mut carrier := propagation.MapCarrier.new({})
+fn outgoing(ctx context.Context) http.Header {
+	mut carrier := httpcarrier.new(http.new_header())
 	propagation.default_propagator().inject(ctx, mut carrier)
-	return carrier.to_map()
+	return carrier.header
+}
+
+// end snippet
+
+// snippet: options
+// Options are what a traced library takes; `none` turns tracing off.
+struct Options {
+	tracer_provider ?otel.TracerProvider
+}
+
+// library_options hands the app's provider to a library through a struct.
+fn library_options(provider &trace.TracerProvider) Options {
+	return Options{
+		// V needs the conversion to put the SDK's provider in an optional
+		// interface field
+		tracer_provider: otel.TracerProvider(provider)
+	}
 }
 
 // end snippet

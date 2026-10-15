@@ -44,11 +44,15 @@ services and the rest: [getting started](docs/getting-started.md).
 - **The SDK** (`five07.otel.sdk.trace`, `.sdk.resource`): a tracer provider;
   samplers (always on and off, ratio by trace id as in Go, parent-based);
   span limits; a simple and a batch processor (queue, drops counted, timed
-  export, flush, shutdown with a timeout); the resource from the environment.
+  export, flush, shutdown with a timeout); the resource from the environment;
+  an in-memory exporter for tests, with helpers to find a span by name, check
+  its parent and read its attributes.
 - **Export**: OTLP/HTTP with JSON (`.exporters.otlphttp`), with the
   specification's endpoint, header and timeout variables and one retry on
-  429/502/503/504; JSON lines to stdout (`.exporters.stdout`).
-- **Propagation** (`.propagation`): W3C Trace Context and Baggage.
+  429/502/503/504; JSON lines to stdout (`.exporters.stdout`); the exporters
+  `OTEL_TRACES_EXPORTER` names, as processors (`.exporters.autoconfig`).
+- **Propagation** (`.propagation`): W3C Trace Context and Baggage, in a map,
+  through a function, or in `net.http`'s headers (`.propagation.httpcarrier`).
 - **Refs** (`.ref`): HMAC or SHA-256 of a value's RFC 8785 canonical JSON, to
   name a value in a span and find it again with the key.
 - **Configuration** by the specification's `OTEL_*` variables; a bad value is a

@@ -6,4 +6,4 @@ module otel
 
 // version is this package's version, as `v.mod` gives it. It is sent as
 // `telemetry.sdk.version`.
-pub const version = '0.0.0'
+pub const version = '0.1.0'

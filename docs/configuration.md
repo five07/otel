@@ -67,6 +67,29 @@ A parent-based sampler follows the caller's decision, so a trace is kept or
 dropped whole across services; the ratio decision is the Go SDK's, so V and Go
 services with the same ratio keep the same traces.
 
+### Where spans go
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `OTEL_TRACES_EXPORTER` | none | `otlp`, `console`, or `none`, comma-separated; read by `autoconfig.processors_from_env()`. |
+
+The SDK doesn't read it itself: `TracerProvider.new` takes the processors it is
+given. `five07.otel.exporters.autoconfig` turns the variable into processors, a
+batch processor over OTLP/HTTP for `otlp` and a simple one over stdout for
+`console`, and the app hands them to the provider, with any of its own:
+
+<!-- snippet: docs/snippets/configured.v#from_env -->
+```v
+// env_provider sends spans where OTEL_TRACES_EXPORTER says: `otlp`, `console`,
+// both, or nowhere.
+fn env_provider() !&trace.TracerProvider {
+	return trace.TracerProvider.new(processors: autoconfig.processors_from_env()!)!
+}
+```
+
+Unset, it is none, so nothing is sent until the deployment says where; the
+specification's default is `otlp`.
+
 ### Span limits
 
 | Variable | Default | Meaning |
@@ -129,6 +152,8 @@ Where a default would do harm, it is an error from the constructor:
 
 - a malformed OTLP endpoint (`otlphttp.Exporter.new`): spans sent elsewhere
   would be lost;
+- an exporter name `OTEL_TRACES_EXPORTER` lists that otel doesn't have
+  (`autoconfig.processors_from_env`): skipping it would lose every span;
 - a malformed or short `OTEL_REF_KEY` (`ref.Refs.new`): a random key in its place
   would make refs no one can look up.
 

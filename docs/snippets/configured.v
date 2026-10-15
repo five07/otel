@@ -2,6 +2,7 @@ module main
 
 import time
 import five07.otel
+import five07.otel.exporters.autoconfig
 import five07.otel.exporters.otlphttp
 import five07.otel.propagation
 import five07.otel.sdk.resource
@@ -42,4 +43,14 @@ fn configured_provider() !&trace.TracerProvider {
 fn propagator() propagation.TextMapPropagator {
 	return propagation.from_env()
 }
+
+// end snippet
+
+// snippet: from_env
+// env_provider sends spans where OTEL_TRACES_EXPORTER says: `otlp`, `console`,
+// both, or nowhere.
+fn env_provider() !&trace.TracerProvider {
+	return trace.TracerProvider.new(processors: autoconfig.processors_from_env()!)!
+}
+
 // end snippet

@@ -108,6 +108,47 @@ appear up to a microsecond before it.
   succeeded, and `ok` only to override a failure someone else recorded.
 - **`is_recording()`** tells whether the span keeps what it is given: check it
   before building attributes that cost something.
+- **`otel.noop_span()`** is a span that records nothing, for a helper that
+  returns a span whether or not this operation is traced, so its callers always
+  end what they get.
+
+## Your own values in the context
+
+The span travels in a `context.Context`, so a library's own values can travel
+beside it in the same one: the app passes one context down, and each layer
+takes what it needs. `context.Key` can't be a type of the library's own, so a
+string key could collide with another package's. Use the address of a
+module-level constant instead, as otel does for the span: no other package can
+make that key. A getter checks the value's type and returns none without one.
+
+<!-- snippet: docs/snippets/library.v#context_values -->
+```v
+// tenant_key_cell exists for its address, which is the context key of the
+// tenant: no other package can make the same key, as a string key could.
+const tenant_key_cell = u8(1)
+
+fn tenant_key() context.Key {
+	return voidptr(&tenant_key_cell)
+}
+
+// with_tenant returns `ctx` carrying `tenant`, beside its trace.
+fn with_tenant(ctx context.Context, tenant string) context.Context {
+	return context.with_value(ctx, tenant_key(), tenant)
+}
+
+// tenant_from returns the tenant `ctx` carries, or none.
+fn tenant_from(ctx context.Context) ?string {
+	if value := ctx.value(tenant_key()) {
+		if value is string {
+			return value
+		}
+	}
+	return none
+}
+```
+
+Give each key its own constant, with its own value (`u8(1)`, `u8(2)`, …), so
+that two keys never share an address.
 
 ## Testing it
 
@@ -119,7 +160,18 @@ exporter:
 exporter := trace.InMemoryExporter.new()
 provider := trace.TracerProvider.new(processors: [trace.SimpleSpanProcessor.new(exporter)])!
 store := Store.new(tracer_provider: provider)
-// … run the code, then read `exporter.spans()`
+// … run the code, then read the spans back
+```
+
+`exporter.spans()` returns them all, in the order they ended; a test usually
+picks one by name, checks its parent, and reads its attributes as text:
+
+<!-- snippet: docs/snippets/library_test.v#reading -->
+```v
+request := exporter.span('request')?
+get := exporter.span('blobstore.get')?
+assert get.is_child_of(request)
+assert get.attribute('blobstore.bucket')?.str() == 'images'
 ```
 
 `docs/snippets/library_test.v` tests the code above that way.

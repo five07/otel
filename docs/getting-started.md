@@ -12,8 +12,10 @@ git clone https://github.com/five07/otel ~/.vmodules/five07/otel
 
 It imports as `five07.otel` (the API: spans, attributes, context), with the
 SDK in `five07.otel.sdk.trace` and `five07.otel.sdk.resource`, the exporters in
-`five07.otel.exporters.otlphttp` and `five07.otel.exporters.stdout`,
-`five07.otel.propagation` for headers, and `five07.otel.ref` for refs.
+`five07.otel.exporters.otlphttp` and `five07.otel.exporters.stdout` (and
+`five07.otel.exporters.autoconfig` to pick them from the environment),
+`five07.otel.propagation` for headers (`.httpcarrier` for `net.http`'s), and
+`five07.otel.ref` for refs.
 
 Test and run with `-nocache` (`v -nocache test .`, `v -nocache run .`): V master's
 module cache has bugs that otel's code meets (the root README has more).
@@ -39,7 +41,8 @@ fn new_provider() !&trace.TracerProvider {
 
 What isn't given comes from the environment: `OTEL_SERVICE_NAME` names the
 service, `OTEL_EXPORTER_OTLP_ENDPOINT` the collector, `OTEL_TRACES_SAMPLER` which
-traces are kept. [Configuration](configuration.md) lists them all.
+traces are kept. [Configuration](configuration.md) lists them all, and shows
+how to let `OTEL_TRACES_EXPORTER` choose the exporters.
 
 ## Record spans
 
@@ -86,30 +89,54 @@ nothing.
 message unless asked (`with_message: true`): messages can quote the values that
 failed.
 
+## Hand the provider to a library
+
+A traced library takes an `otel.TracerProvider`, often as an optional field of
+its options, so that leaving it out turns tracing off. V won't put the SDK's
+provider, a pointer, in an optional interface field by itself: convert it.
+
+<!-- snippet: docs/snippets/tracing.v#options -->
+```v
+// Options are what a traced library takes; `none` turns tracing off.
+struct Options {
+	tracer_provider ?otel.TracerProvider
+}
+
+// library_options hands the app's provider to a library through a struct.
+fn library_options(provider &trace.TracerProvider) Options {
+	return Options{
+		// V needs the conversion to put the SDK's provider in an optional
+		// interface field
+		tracer_provider: otel.TracerProvider(provider)
+	}
+}
+```
+
+As a named argument of a function (`take(tracer_provider: provider)`) it needs
+no conversion.
+
 ## Across services
 
 A trace continues across services in the W3C `traceparent` header (and
 `baggage`). Extract it from an incoming request, and spans started from the
 returned context join the caller's trace; inject it into an outgoing request,
-and the next service's spans join yours.
+and the next service's spans join yours. `httpcarrier` reads and writes
+`net.http`'s headers, which veb and vweb hand over too; for other frameworks,
+`propagation.GetterCarrier` reads through a function and
+`propagation.MapCarrier` holds a map.
 
 <!-- snippet: docs/snippets/tracing.v#propagation -->
 ```v
 // incoming continues the trace an incoming request carries in its headers.
 fn incoming(req http.Request) context.Context {
-	carrier := propagation.GetterCarrier{
-		get_fn: fn [req] (key string) ?string {
-			return req.header.get_custom(key)
-		}
-	}
-	return propagation.default_propagator().extract(context.background(), carrier)
+	return propagation.default_propagator().extract(context.background(), httpcarrier.new(req.header))
 }
 
 // outgoing returns the headers that carry `ctx`'s trace to the next service.
-fn outgoing(ctx context.Context) map[string]string {
-	mut carrier := propagation.MapCarrier.new({})
+fn outgoing(ctx context.Context) http.Header {
+	mut carrier := httpcarrier.new(http.new_header())
 	propagation.default_propagator().inject(ctx, mut carrier)
-	return carrier.to_map()
+	return carrier.header
 }
 ```
 
