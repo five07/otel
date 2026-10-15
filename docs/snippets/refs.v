@@ -30,4 +30,17 @@ struct Invoice {
 fn invoice_ref(refs ref.Refs, inv Invoice) !string {
 	return refs.ref(ref.from_struct(inv)!)!
 }
+
+// end snippet
+
+// snippet: user
+// tag_user names the signed-in user on `span` by a ref of their account ID,
+// so one user's requests can be found across traces and services. The ID
+// comes from the session or token; the session ID or token itself changes
+// on rotation and is a credential, so it isn't what's hashed.
+fn tag_user(refs ref.Refs, span otel.Span, account_id string) {
+	if kv := refs.attribute('user.ref', account_id) {
+		span.set_attributes(kv)
+	}
+}
 // end snippet

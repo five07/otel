@@ -25,6 +25,35 @@ An engineer with the key makes the ref of a value they know, such as
 `{"email": "alice@example.com"}`, and searches the traces for it.
 [examples/refs](../examples/refs) does that end to end.
 
+## Following a user
+
+The same goes for who made a request. A `user.ref` attribute on each request's
+span, the ref of the signed-in user's account ID, lets an engineer with the key
+find that user's requests across traces and services:
+
+<!-- snippet: docs/snippets/refs.v#user -->
+```v
+// tag_user names the signed-in user on `span` by a ref of their account ID,
+// so one user's requests can be found across traces and services. The ID
+// comes from the session or token; the session ID or token itself changes
+// on rotation and is a credential, so it isn't what's hashed.
+fn tag_user(refs ref.Refs, span otel.Span, account_id string) {
+	if kv := refs.attribute('user.ref', account_id) {
+		span.set_attributes(kv)
+	}
+}
+```
+
+Make it from the stable ID that the session or token resolves to, not the
+session ID or token: those change on rotation, so the ref would too, and a
+token is a credential. Every service needs the same `OTEL_REF_KEY` and the same
+value form: `'u_8f3a91'` and `{"user_id": "u_8f3a91"}` have different refs. A
+custom key such as `user.ref` keeps it apart from semconv's `user.id`, which
+backends and readers take to be the ID itself.
+
+A service that can't tell who the user is can get the ref from the caller in
+baggage: the ref is safe in headers, where the ID may not be.
+
 ## Modes
 
 | Mode | Ref | When |
